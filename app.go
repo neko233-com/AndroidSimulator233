@@ -4,13 +4,15 @@ import (
 	"context"
 	"path/filepath"
 
+	"github.com/neko233/AndroidSimulator233/internal/adb"
 	"github.com/neko233/AndroidSimulator233/internal/api"
 	"github.com/neko233/AndroidSimulator233/internal/vm"
 )
 
 type App struct {
-	ctx   context.Context
-	vmAPI *api.VMAPI
+	ctx    context.Context
+	vmAPI  *api.VMAPI
+	fileAPI *api.FileAPI
 }
 
 func NewApp() *App {
@@ -27,6 +29,9 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	a.vmAPI = api.NewVMAPI(mgr)
+
+	adbClient := adb.NewClient("adb")
+	a.fileAPI = api.NewFileAPI(adbClient)
 }
 
 func (a *App) shutdown(ctx context.Context) {
@@ -43,4 +48,16 @@ func (a *App) CreateVM(name, android string) (*api.VMInfo, error) {
 
 func (a *App) DeleteVM(name string) error {
 	return a.vmAPI.DeleteVM(name)
+}
+
+func (a *App) ListFiles(deviceID, path string) ([]api.FileEntry, error) {
+	return a.fileAPI.ListFiles(deviceID, path)
+}
+
+func (a *App) UploadFile(deviceID, localPath, remotePath string) error {
+	return a.fileAPI.UploadFile(deviceID, localPath, remotePath)
+}
+
+func (a *App) DownloadFile(deviceID, remotePath, localPath string) error {
+	return a.fileAPI.DownloadFile(deviceID, remotePath, localPath)
 }
