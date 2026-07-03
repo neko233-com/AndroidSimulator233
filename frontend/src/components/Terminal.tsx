@@ -1,4 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
+import type { KeyboardEvent } from 'react'
+import { useI18n } from '../lib/i18n'
+import { GoBridge } from '../lib/types'
 
 interface TerminalProps {
 	deviceId: string
@@ -11,6 +14,7 @@ interface HistoryEntry {
 }
 
 export function Terminal({ deviceId }: TerminalProps) {
+	const { t } = useI18n()
 	const [history, setHistory] = useState<HistoryEntry[]>([])
 	const [input, setInput] = useState('')
 	const [loading, setLoading] = useState(false)
@@ -25,7 +29,7 @@ export function Terminal({ deviceId }: TerminalProps) {
 
 		setLoading(true)
 		try {
-			const output = await window.Execute(deviceId, cmd)
+			const output = await GoBridge.Execute(deviceId, cmd)
 			setHistory((prev) => [
 				...prev,
 				{ command: cmd, output: output || '', timestamp: Date.now() },
@@ -41,7 +45,7 @@ export function Terminal({ deviceId }: TerminalProps) {
 		}
 	}
 
-	const handleKeyDown = (e: React.KeyboardEvent) => {
+	const handleKeyDown = (e: KeyboardEvent) => {
 		if (e.key === 'Enter' && !loading) {
 			executeCommand(input)
 		}
@@ -57,7 +61,7 @@ export function Terminal({ deviceId }: TerminalProps) {
 						<pre className="text-gray-300 whitespace-pre-wrap">{entry.output}</pre>
 					</div>
 				))}
-				{loading && <div className="text-yellow-400">Executing...</div>}
+				{loading && <div className="text-yellow-400">{t('executing')}</div>}
 				<div ref={bottomRef} />
 			</div>
 
@@ -71,7 +75,7 @@ export function Terminal({ deviceId }: TerminalProps) {
 					onKeyDown={handleKeyDown}
 					disabled={loading}
 					className="flex-1 bg-transparent text-white outline-none"
-					placeholder="Enter command..."
+					placeholder={t('enterCommand')}
 					autoFocus
 				/>
 			</div>

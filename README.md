@@ -15,7 +15,7 @@ Open-source Android Simulator — a free alternative to MuMu Simulator, supporti
 
 ```powershell
 # Run in PowerShell (as Administrator if needed)
-irm https://raw.githubusercontent.com/neko233/AndroidSimulator233/main/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/neko233-com/AndroidSimulator233/main/scripts/install.ps1 | iex
 ```
 
 Or download manually:
@@ -26,7 +26,7 @@ Or download manually:
 
 ```bash
 # Run in Terminal
-curl -fsSL https://raw.githubusercontent.com/neko233/AndroidSimulator233/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/neko233-com/AndroidSimulator233/main/scripts/install.sh | bash
 ```
 
 Or download manually:

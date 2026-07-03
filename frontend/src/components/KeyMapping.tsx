@@ -1,4 +1,6 @@
 import { useState, useRef } from 'react'
+import type { KeyboardEvent, MouseEvent } from 'react'
+import { useI18n } from '../lib/i18n'
 
 interface TouchMapping {
 	key: string
@@ -19,15 +21,16 @@ interface KeyMappingProps {
 }
 
 export function KeyMapping({ onSave }: KeyMappingProps) {
+	const { t } = useI18n()
 	const [config, setConfig] = useState<KeyMappingConfig>({
-		name: 'New Profile',
+		name: t('newProfile'),
 		mappings: [],
 	})
 	const [selectedMapping, setSelectedMapping] = useState<number | null>(null)
 	const [recording, setRecording] = useState(false)
 	const canvasRef = useRef<HTMLCanvasElement>(null)
 
-	const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+	const handleCanvasClick = (e: MouseEvent<HTMLCanvasElement>) => {
 		if (!canvasRef.current || recording) return
 
 		const rect = canvasRef.current.getBoundingClientRect()
@@ -49,7 +52,7 @@ export function KeyMapping({ onSave }: KeyMappingProps) {
 		setRecording(true)
 	}
 
-	const handleKeyDown = (e: React.KeyboardEvent) => {
+	const handleKeyDown = (e: KeyboardEvent) => {
 		if (!recording || selectedMapping === null) return
 
 		e.preventDefault()
@@ -112,7 +115,7 @@ export function KeyMapping({ onSave }: KeyMappingProps) {
 
 			{/* Sidebar */}
 			<div className="w-64 bg-gray-800 border-l border-gray-700 p-4">
-				<h3 className="text-lg font-bold mb-4">Key Mapping</h3>
+				<h3 className="text-lg font-bold mb-4">{t('keyMapping')}</h3>
 
 				<input
 					type="text"
@@ -148,7 +151,7 @@ export function KeyMapping({ onSave }: KeyMappingProps) {
 				</div>
 
 				{recording && (
-					<div className="text-yellow-400 text-sm mb-4">Press a key...</div>
+					<div className="text-yellow-400 text-sm mb-4">{t('pressKey')}</div>
 				)}
 
 				<div className="space-y-2">
@@ -156,7 +159,7 @@ export function KeyMapping({ onSave }: KeyMappingProps) {
 						onClick={() => onSave(config)}
 						className="w-full px-4 py-2 bg-blue-600 rounded hover:bg-blue-500"
 					>
-						Save
+						{t('save')}
 					</button>
 				</div>
 			</div>

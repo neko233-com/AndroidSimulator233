@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
+import { useI18n } from '../lib/i18n'
 import type { FileEntry } from '../lib/types'
+import { GoBridge } from '../lib/types'
 
 interface FileManagerProps {
   deviceId: string
@@ -17,6 +19,7 @@ const SHORTCUTS = [
 ]
 
 export function FileManager({ deviceId }: FileManagerProps) {
+  const { t } = useI18n()
   const [path, setPath] = useState('/sdcard')
   const [files, setFiles] = useState<FileEntry[]>([])
   const [loading, setLoading] = useState(false)
@@ -28,10 +31,10 @@ export function FileManager({ deviceId }: FileManagerProps) {
   const loadFiles = async (dirPath: string) => {
     setLoading(true)
     try {
-      const result = await window.ListFiles(deviceId, dirPath)
+      const result = await GoBridge.ListFiles(deviceId, dirPath)
       setFiles(result || [])
     } catch (err) {
-      console.error('Failed to load files:', err)
+      console.error(t('loadFilesFailed'), err)
     } finally {
       setLoading(false)
     }
@@ -68,7 +71,7 @@ export function FileManager({ deviceId }: FileManagerProps) {
                 : 'bg-gray-600 hover:bg-gray-500'
             }`}
           >
-            {s.label}
+          {s.label}
           </button>
         ))}
         <span className="ml-auto text-xs text-gray-400">{path}</span>
@@ -76,15 +79,15 @@ export function FileManager({ deviceId }: FileManagerProps) {
 
       <div className="flex-1 overflow-auto">
         {loading ? (
-          <div className="p-4 text-center text-gray-400">Loading...</div>
+          <div className="p-4 text-center text-gray-400">{t('loading')}</div>
         ) : files.length === 0 ? (
-          <div className="p-4 text-center text-gray-400">Empty directory</div>
+          <div className="p-4 text-center text-gray-400">{t('emptyDirectory')}</div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-gray-400 border-b border-gray-700">
-                <th className="p-2">Name</th>
-                <th className="p-2 w-24">Size</th>
+                <th className="p-2">{t('name')}</th>
+                <th className="p-2 w-24">{t('size')}</th>
               </tr>
             </thead>
             <tbody>

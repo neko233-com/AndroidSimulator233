@@ -1,12 +1,15 @@
+import { useI18n } from '../lib/i18n'
 import { VMInfo } from '../lib/types'
 
 interface VMCardProps {
   vm: VMInfo
   onStart: (name: string) => void
   onDelete: (name: string) => void
+  onOpen: (name: string) => void
 }
 
-export function VMCard({ vm, onStart, onDelete }: VMCardProps) {
+export function VMCard({ vm, onStart, onDelete, onOpen }: VMCardProps) {
+  const { t } = useI18n()
   const statusColors: Record<string, string> = {
     running: 'bg-green-500',
     stopped: 'bg-gray-500',
@@ -15,10 +18,10 @@ export function VMCard({ vm, onStart, onDelete }: VMCardProps) {
   }
 
   const statusLabels: Record<string, string> = {
-    running: 'Running',
-    stopped: 'Stopped',
-    starting: 'Starting...',
-    error: 'Error',
+    running: t('running'),
+    stopped: t('stopped'),
+    starting: t('starting'),
+    error: t('error'),
   }
 
   const isRunning = vm.status === 'running'
@@ -58,13 +61,15 @@ export function VMCard({ vm, onStart, onDelete }: VMCardProps) {
         <h3 className="font-bold text-lg">{vm.name}</h3>
         <div className="text-sm text-gray-400 mt-1">
           <div>{vm.android}</div>
-          <div>{vm.cpus} CPUs · {vm.ram} RAM</div>
+          <div>{vm.cpus} {t('cores')} · {vm.ram} {t('ram')}</div>
+          {vm.resolution && <div>{vm.resolution} · {vm.dpi ?? 240} DPI</div>}
+          <div>{vm.renderer ?? 'vulkan'} · {vm.maxFps ?? 60} FPS</div>
         </div>
       </div>
 
       {/* Pre-installed Apps */}
       <div className="mb-4">
-        <div className="text-xs text-gray-500 mb-1">Pre-installed:</div>
+        <div className="text-xs text-gray-500 mb-1">{t('preinstalledApps')}:</div>
         <div className="flex gap-1 flex-wrap">
           <span className="px-2 py-0.5 bg-gray-700 rounded text-xs">Chrome</span>
           <span className="px-2 py-0.5 bg-gray-700 rounded text-xs">TapTap</span>
@@ -79,21 +84,21 @@ export function VMCard({ vm, onStart, onDelete }: VMCardProps) {
             onClick={() => onStart(vm.name)}
             className="flex-1 px-4 py-2 bg-green-600 rounded hover:bg-green-500 font-medium"
           >
-            Start
+            {t('start')}
           </button>
         ) : (
           <button
-            onClick={() => onStart(vm.name)}
+            onClick={() => onOpen(vm.name)}
             className="flex-1 px-4 py-2 bg-gray-600 rounded hover:bg-gray-500"
           >
-            Open
+            {t('open')}
           </button>
         )}
         <button
           onClick={() => onDelete(vm.name)}
           className="px-4 py-2 bg-red-600/50 rounded hover:bg-red-500/50"
         >
-          Delete
+          {t('delete')}
         </button>
       </div>
     </div>
