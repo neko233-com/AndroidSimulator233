@@ -1,0 +1,27 @@
+version: '3'
+
+vars:
+  APP_NAME: "AndroidSimulator233"
+  BIN_DIR: "bin"
+
+tasks:
+  build:
+    summary: Builds the application
+    cmds:
+      - go build -o {{.BIN_DIR}}/{{.APP_NAME}}.exe .
+
+  package:
+    summary: Packages a production build of the application
+    cmds:
+      - task: build
+
+  run:
+    summary: Runs the application
+    cmds:
+      - task: build
+      - "{{.BIN_DIR}}/{{.APP_NAME}}.exe"
+
+  dev:
+    summary: Runs the application in development mode
+    cmds:
+      - wails3 dev -config ./build/config.yml
