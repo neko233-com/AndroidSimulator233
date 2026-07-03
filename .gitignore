@@ -1,29 +1,69 @@
-# Binaries
+# OS / editor noise
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment and local config
+.env
+.env.*
+!.env.example
+*.local
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Go
+/vendor/
+*.test
+*.out
+coverage.*
+
+# Node / frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/coverage/
+
+# Wails / desktop build outputs
+build/
+bin/
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
+*.app/
+*.msi
+*.dmg
+*.pkg
 
-# Go
-/vendor/
+# Android simulator runtime data
+vms/
+images/
+/qemu/
+*.qcow2
+*.img
+*.iso
+*.apk
+*.apks
+*.xapk
+*.obb
+*.snapshot
+*.pid
+*.sock
 
-# Node
-node_modules/
-frontend/dist/
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Wails
-build/
-
-# Compose docs (auto-generated)
+# Generated docs
 docs/compose/
+docs/.vitepress/cache/
+docs/.vitepress/dist/

@@ -34,11 +34,17 @@ func NewManager(dataDir string) *Manager {
 }
 
 func (m *Manager) Create(config *QEMUConfig) (*QEMUInstance, error) {
+	id := fmt.Sprintf("vm-%d", m.nextID)
+	return m.CreateWithID(id, config)
+}
+
+func (m *Manager) CreateWithID(id string, config *QEMUConfig) (*QEMUInstance, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	id := fmt.Sprintf("vm-%d", m.nextID)
-	m.nextID++
+	if existing, ok := m.instances[id]; ok {
+		return existing, nil
+	}
 
 	instance := &QEMUInstance{
 		ID:     id,
@@ -47,6 +53,7 @@ func (m *Manager) Create(config *QEMUConfig) (*QEMUInstance, error) {
 	}
 
 	m.instances[id] = instance
+	m.nextID++
 	return instance, nil
 }
 

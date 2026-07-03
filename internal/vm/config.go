@@ -11,7 +11,17 @@ type VMConfig struct {
 	RAM         string `json:"ram"`
 	Disk        string `json:"disk"`
 	Android     string `json:"android"`
+	Resolution  string `json:"resolution,omitempty"`
+	DPI         int    `json:"dpi,omitempty"`
+	Performance string `json:"performance,omitempty"`
+	Renderer    string `json:"renderer,omitempty"`
+	MaxFPS      int    `json:"maxFps,omitempty"`
+	Root        bool   `json:"root,omitempty"`
+	PhoneBrand  string `json:"phoneBrand,omitempty"`
+	PhoneModel  string `json:"phoneModel,omitempty"`
 	Display     string `json:"display,omitempty"`
+	ADBPort     int    `json:"adbPort,omitempty"`
+	VNCPort     int    `json:"vncPort,omitempty"`
 	GPU         string `json:"gpu,omitempty"`
 	Network     string `json:"network,omitempty"`
 	FirstBoot   bool   `json:"firstBoot,omitempty"`

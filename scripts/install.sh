@@ -28,7 +28,7 @@ echo "      $INSTALL_DIR"
 
 # Download latest release
 echo "[2/4] Downloading latest release..."
-RELEASE_URL="https://api.github.com/repos/neko233/AndroidSimulator233/releases/latest"
+RELEASE_URL="https://api.github.com/repos/neko233-com/AndroidSimulator233/releases/latest"
 
 if command -v curl &> /dev/null; then
     RELEASE_INFO=$(curl -s "$RELEASE_URL")
@@ -48,7 +48,7 @@ fi
 
 if [ -z "$DOWNLOAD_URL" ]; then
     echo "      No installer found in latest release"
-    echo "      Please download manually from: https://github.com/neko233/AndroidSimulator233/releases"
+    echo "      Please download manually from: https://github.com/neko233-com/AndroidSimulator233/releases"
     exit 1
 fi
 

@@ -28,23 +28,29 @@ if ! command -v node &> /dev/null; then
 fi
 echo "  Node.js: $(node --version)"
 
-# Check Wails
-if ! command -v wails &> /dev/null; then
+# Check Wails v3
+if ! command -v wails3 &> /dev/null; then
     echo "Installing Wails v3..."
-    go install github.com/wailsapp/wails/v3/cmd/wails@latest
+    go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+    WAILS3_BIN="$(go env GOPATH)/bin/wails3"
+    if [ ! -x "$WAILS3_BIN" ]; then
+        echo "Error: wails3 was installed but not found at $WAILS3_BIN"
+        exit 1
+    fi
+else
+    WAILS3_BIN="$(command -v wails3)"
 fi
-echo "  Wails: installed"
+echo "  Wails v3: installed"
 
 echo ""
-echo "Building frontend..."
+echo "Installing frontend dependencies..."
 cd frontend
-npm install
-npm run build
+npm ci
 cd ..
 
 echo ""
 echo "Building application..."
-wails build
+"$WAILS3_BIN" build
 
 echo ""
 echo "========================================"

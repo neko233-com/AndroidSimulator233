@@ -2,20 +2,25 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"io"
 	"log"
+	"os"
 	"path/filepath"
 
 	"github.com/neko233/AndroidSimulator233/internal/adb"
 	"github.com/neko233/AndroidSimulator233/internal/api"
 	"github.com/neko233/AndroidSimulator233/internal/vm"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type App struct {
-	ctx       context.Context
-	vmAPI     *api.VMAPI
-	fileAPI   *api.FileAPI
-	logAPI    *api.LogAPI
-	imageMgr  *vm.ImageManager
+	ctx        context.Context
+	vmAPI      *api.VMAPI
+	fileAPI    *api.FileAPI
+	logAPI     *api.LogAPI
+	imageMgr   *vm.ImageManager
 	downloader *vm.ImageDownloader
 }
 
@@ -23,12 +28,29 @@ func NewApp() *App {
 	return &App{}
 }
 
+func (a *App) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+	return a.init(ctx)
+}
+
+func (a *App) ServiceShutdown() error {
+	return nil
+}
+
 func (a *App) startup(ctx context.Context) {
+	if err := a.init(ctx); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func (a *App) shutdown(ctx context.Context) {
+}
+
+func (a *App) init(ctx context.Context) error {
 	a.ctx = ctx
 
-	userDataDir, ok := ctx.Value("userDataDir").(string)
-	if !ok || userDataDir == "" {
-		log.Fatal("missing or invalid userDataDir in context")
+	userDataDir := defaultUserDataDir()
+	if ctxUserDataDir, ok := ctx.Value("userDataDir").(string); ok && ctxUserDataDir != "" {
+		userDataDir = ctxUserDataDir
 	}
 
 	dataDir := filepath.Join(userDataDir, "vms")
@@ -37,20 +59,30 @@ func (a *App) startup(ctx context.Context) {
 	// Initialize managers
 	mgr, err := vm.NewVMManager(dataDir)
 	if err != nil {
-		log.Fatal("failed to create VM manager: ", err)
+		return fmt.Errorf("create VM manager: %w", err)
+	}
+	if err := mgr.EnsureDefault(); err != nil {
+		log.Printf("failed to ensure default VM: %v", err)
 	}
 
 	a.imageMgr = vm.NewImageManager(imageDir)
 	a.downloader = vm.NewImageDownloader(imageDir)
 
-	a.vmAPI = api.NewVMAPI(mgr)
+	a.vmAPI = api.NewVMAPI(mgr, a.imageMgr)
 
 	adbClient := adb.NewClient("adb")
 	a.fileAPI = api.NewFileAPI(adbClient)
 	a.logAPI = api.NewLogAPI(adbClient)
+
+	return nil
 }
 
-func (a *App) shutdown(ctx context.Context) {
+func defaultUserDataDir() string {
+	configDir, err := os.UserConfigDir()
+	if err != nil || configDir == "" {
+		return filepath.Join(".", "data")
+	}
+	return filepath.Join(configDir, "AndroidSimulator233")
 }
 
 // Wails bindings - delegate to API
@@ -60,6 +92,23 @@ func (a *App) ListVMs() []api.VMInfo {
 
 func (a *App) CreateVM(name, android string) (*api.VMInfo, error) {
 	return a.vmAPI.CreateVM(name, android)
+}
+
+func (a *App) CreateVMWithConfig(name, android string, cpus int, ram, resolution string, dpi int, performance, renderer string, maxFPS int, root bool, phoneBrand, phoneModel string) (*api.VMInfo, error) {
+	return a.vmAPI.CreateVMWithConfig(api.CreateVMRequest{
+		Name:        name,
+		Android:     android,
+		CPUs:        cpus,
+		RAM:         ram,
+		Resolution:  resolution,
+		DPI:         dpi,
+		Performance: performance,
+		Renderer:    renderer,
+		MaxFPS:      maxFPS,
+		Root:        root,
+		PhoneBrand:  phoneBrand,
+		PhoneModel:  phoneModel,
+	})
 }
 
 func (a *App) DeleteVM(name string) error {
@@ -121,4 +170,44 @@ func (a *App) GetAvailableImages() []api.ImageInfo {
 
 func (a *App) EnsureImageReady(version string) (string, error) {
 	return a.downloader.EnsureImage(version)
+}
+
+func (a *App) GetAppLogPath() string {
+	return appLogPath
+}
+
+func (a *App) GetAppLogs(maxBytes int) (string, error) {
+	if appLogPath == "" {
+		return "", nil
+	}
+	if maxBytes <= 0 {
+		maxBytes = 64 * 1024
+	}
+
+	file, err := os.Open(appLogPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", nil
+		}
+		return "", err
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil {
+		return "", err
+	}
+
+	offset := info.Size() - int64(maxBytes)
+	if offset < 0 {
+		offset = 0
+	}
+	if _, err := file.Seek(offset, io.SeekStart); err != nil {
+		return "", err
+	}
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }

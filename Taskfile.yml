@@ -9,7 +9,10 @@ tasks:
     summary: Builds the application
     cmds:
       - task: frontend:build
-      - go build -o {{.BIN_DIR}}/{{.APP_NAME}}.exe .
+      - cmd: go build -ldflags="-H windowsgui" -o {{.BIN_DIR}}/{{.APP_NAME}}.exe .
+        platforms: [windows]
+      - cmd: go build -o {{.BIN_DIR}}/{{.APP_NAME}} .
+        platforms: [linux, darwin]
 
   frontend:build:
     summary: Builds the frontend
@@ -21,6 +24,8 @@ tasks:
     summary: Packages a production build of the application
     cmds:
       - task: build
+      - cmd: ISCC.exe build/installer.iss
+        platforms: [windows]
 
   run:
     summary: Runs the application

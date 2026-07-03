@@ -25,7 +25,7 @@ Write-Host "      $installDir" -ForegroundColor Gray
 
 # Download latest release
 Write-Host "[2/4] Downloading latest release..." -ForegroundColor Green
-$releasesUrl = "https://api.github.com/repos/neko233/AndroidSimulator233/releases/latest"
+$releasesUrl = "https://api.github.com/repos/neko233-com/AndroidSimulator233/releases/latest"
 try {
     $release = Invoke-RestMethod -Uri $releasesUrl
     $asset = $release.assets | Where-Object { $_.name -like "*.exe" -or $_.name -like "*.msi" } | Select-Object -First 1
@@ -38,12 +38,12 @@ try {
         Invoke-WebRequest -Uri $downloadUrl -OutFile $installerPath
     } else {
         Write-Host "      No installer found in latest release" -ForegroundColor Yellow
-        Write-Host "      Please download manually from: https://github.com/neko233/AndroidSimulator233/releases" -ForegroundColor Yellow
+        Write-Host "      Please download manually from: https://github.com/neko233-com/AndroidSimulator233/releases" -ForegroundColor Yellow
         exit 1
     }
 } catch {
     Write-Host "      Failed to fetch release info: $_" -ForegroundColor Red
-    Write-Host "      Please download manually from: https://github.com/neko233/AndroidSimulator233/releases" -ForegroundColor Yellow
+    Write-Host "      Please download manually from: https://github.com/neko233-com/AndroidSimulator233/releases" -ForegroundColor Yellow
     exit 1
 }
 
