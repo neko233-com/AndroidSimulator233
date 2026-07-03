@@ -82,6 +82,10 @@ func (a *App) StartVM(name string) error {
 	return a.vmAPI.StartVM(name)
 }
 
+func (a *App) GetDefaultApps() []string {
+	return a.vmAPI.GetDefaultApps()
+}
+
 func (a *App) StopVM(name string) error {
 	return a.vmAPI.StopVM(name)
 }

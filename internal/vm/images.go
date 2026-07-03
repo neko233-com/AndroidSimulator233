@@ -11,6 +11,7 @@ type ImageInfo struct {
 	Path       string
 	Size       int64
 	Downloaded bool
+	URL        string
 }
 
 type ImageManager struct {
@@ -22,9 +23,20 @@ var availableImages = []struct {
 	URL     string
 	Size    int64
 }{
-	{"android-9", "https://example.com/android-9.qcow2", 1_000_000_000},
-	{"android-12", "https://example.com/android-12.qcow2", 1_500_000_000},
-	{"android-14", "https://example.com/android-14.qcow2", 2_000_000_000},
+	{"android-15", "https://github.com/AndroidSimulator233/system-images/releases/download/android-15/system.img", 2_500_000_000},
+	{"android-14", "https://github.com/AndroidSimulator233/system-images/releases/download/android-14/system.img", 2_000_000_000},
+	{"android-12", "https://github.com/AndroidSimulator233/system-images/releases/download/android-12/system.img", 1_500_000_000},
+}
+
+// DefaultImage is the default Android version for new VMs
+const DefaultImage = "android-15"
+
+// DefaultApps are pre-installed apps via first-boot script
+var DefaultApps = []string{
+	"com.android.chrome",        // Chrome
+	"com.taptap.global",         // TapTap
+	"com.android.vending",       // Google Play Store
+	"com.google.android.gms",    // Google Play Services
 }
 
 func NewImageManager(imageDir string) *ImageManager {
@@ -44,6 +56,7 @@ func (m *ImageManager) ListAvailable() []ImageInfo {
 			Path:       path,
 			Size:       img.Size,
 			Downloaded: err == nil,
+			URL:        img.URL,
 		}
 		images = append(images, info)
 	}
@@ -73,4 +86,8 @@ func (m *ImageManager) CreateOverlay(baseVersion, overlayName string) (string, e
 	_ = overlayPath
 
 	return overlayPath, nil
+}
+
+func (m *ImageManager) GetDefaultApps() []string {
+	return DefaultApps
 }

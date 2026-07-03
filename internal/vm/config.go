@@ -6,14 +6,16 @@ import (
 )
 
 type VMConfig struct {
-	Name    string `json:"name"`
-	CPUs    int    `json:"cpus"`
-	RAM     string `json:"ram"`
-	Disk    string `json:"disk"`
-	Android string `json:"android"`
-	Display string `json:"display,omitempty"`
-	GPU     string `json:"gpu,omitempty"`
-	Network string `json:"network,omitempty"`
+	Name        string `json:"name"`
+	CPUs        int    `json:"cpus"`
+	RAM         string `json:"ram"`
+	Disk        string `json:"disk"`
+	Android     string `json:"android"`
+	Display     string `json:"display,omitempty"`
+	GPU         string `json:"gpu,omitempty"`
+	Network     string `json:"network,omitempty"`
+	FirstBoot   bool   `json:"firstBoot,omitempty"`
+	SetupStatus string `json:"setupStatus,omitempty"` // "pending", "installing", "done"
 }
 
 func (c *VMConfig) Save(path string) error {
@@ -30,4 +32,15 @@ func (c *VMConfig) Load(path string) error {
 		return err
 	}
 	return json.Unmarshal(data, c)
+}
+
+// NeedsSetup returns true if this VM needs first-boot app installation
+func (c *VMConfig) NeedsSetup() bool {
+	return c.FirstBoot || c.SetupStatus == "" || c.SetupStatus == "pending"
+}
+
+// MarkSetupComplete marks the VM as having completed first-boot setup
+func (c *VMConfig) MarkSetupComplete() {
+	c.FirstBoot = false
+	c.SetupStatus = "done"
 }

@@ -64,14 +64,21 @@ func (m *VMManager) Create(name, android string) (*VMConfig, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	// Default to Android 15 if not specified
+	if android == "" {
+		android = DefaultImage
+	}
+
 	config := &VMConfig{
-		Name:    name,
-		CPUs:    2,
-		RAM:     "2G",
-		Android: android,
-		Display: "vnc=:0",
-		GPU:     "virtio",
-		Network: "user",
+		Name:      name,
+		CPUs:      2,
+		RAM:       "2G",
+		Android:   android,
+		Display:   "vnc=:0",
+		GPU:       "virtio",
+		Network:   "user",
+		FirstBoot: true,
+		SetupStatus: "pending",
 	}
 
 	path := filepath.Join(m.dataDir, name+".json")

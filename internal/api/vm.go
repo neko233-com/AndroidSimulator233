@@ -81,3 +81,7 @@ func (a *VMAPI) ScreenshotVM(name, path string) error {
 func (a *VMAPI) Execute(deviceID, command string) (string, error) {
 	return a.adb.Shell(deviceID, command)
 }
+
+func (a *VMAPI) GetDefaultApps() []string {
+	return vm.DefaultApps
+}
