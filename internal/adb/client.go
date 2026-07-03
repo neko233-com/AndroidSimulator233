@@ -15,6 +15,10 @@ func NewClient(adbPath string) *Client {
 	return &Client{adbPath: adbPath}
 }
 
+func (c *Client) GetPath() string {
+	return c.adbPath
+}
+
 func (c *Client) GetDevices() ([]Device, error) {
 	cmd := exec.Command(c.adbPath, "devices")
 	output, err := cmd.CombinedOutput()

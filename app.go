@@ -10,9 +10,10 @@ import (
 )
 
 type App struct {
-	ctx    context.Context
-	vmAPI  *api.VMAPI
+	ctx     context.Context
+	vmAPI   *api.VMAPI
 	fileAPI *api.FileAPI
+	logAPI  *api.LogAPI
 }
 
 func NewApp() *App {
@@ -32,6 +33,7 @@ func (a *App) startup(ctx context.Context) {
 
 	adbClient := adb.NewClient("adb")
 	a.fileAPI = api.NewFileAPI(adbClient)
+	a.logAPI = api.NewLogAPI(adbClient)
 }
 
 func (a *App) shutdown(ctx context.Context) {
@@ -60,4 +62,12 @@ func (a *App) UploadFile(deviceID, localPath, remotePath string) error {
 
 func (a *App) DownloadFile(deviceID, remotePath, localPath string) error {
 	return a.fileAPI.DownloadFile(deviceID, remotePath, localPath)
+}
+
+func (a *App) GetLogs(deviceID, filter string) ([]api.LogEntry, error) {
+	return a.logAPI.GetLogs(deviceID, filter)
+}
+
+func (a *App) StreamLogs(deviceID, filter string) (<-chan api.LogEntry, error) {
+	return a.logAPI.StreamLogs(deviceID, filter)
 }
