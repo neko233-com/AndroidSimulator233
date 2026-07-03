@@ -205,9 +205,15 @@ const messages: Record<Language, Record<string, string>> = {
 const I18nContext = createContext<I18nContextValue | null>(null)
 
 function detectLanguage(): Language {
-  const saved = localStorage.getItem('language')
-  if (saved === 'zh' || saved === 'en') return saved
-  return navigator.language.toLowerCase().startsWith('zh') ? 'zh' : 'en'
+  try {
+    const saved = window.localStorage?.getItem('language')
+    if (saved === 'zh' || saved === 'en') return saved
+  } catch {
+    // WebView2 may deny storage during early startup; fall back to browser language.
+  }
+
+  const browserLanguage = typeof navigator === 'undefined' ? 'en' : navigator.language
+  return browserLanguage.toLowerCase().startsWith('zh') ? 'zh' : 'en'
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
@@ -215,7 +221,11 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<I18nContextValue>(() => {
     const setLanguage = (next: Language) => {
-      localStorage.setItem('language', next)
+      try {
+        window.localStorage?.setItem('language', next)
+      } catch {
+        // Language still changes for the current session when persistence is unavailable.
+      }
       setLanguageState(next)
     }
 

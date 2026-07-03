@@ -97,34 +97,93 @@ export interface GoBridgeAPI {
       GetAppLogs(maxBytes: number): Promise<string>
 }
 
-function requireMethod<K extends keyof GoBridgeAPI>(name: K): GoBridgeAPI[K] {
+type WailsRuntime = {
+  Call: {
+    ByID: (id: number, ...args: unknown[]) => Promise<unknown>
+  }
+}
+
+const wailsMethodIDs: Partial<Record<keyof GoBridgeAPI, number>> = {
+  CreateVM: 1888402924,
+  CreateVMWithConfig: 4106498978,
+  DeleteVM: 1532597571,
+  DownloadFile: 764734343,
+  DownloadImage: 1200166230,
+  EnsureImageReady: 3504284291,
+  Execute: 2159374336,
+  GetAppLogPath: 2362330903,
+  GetAppLogs: 1354887257,
+  GetAvailableImages: 574155296,
+  GetDefaultApps: 3544643360,
+  GetLogs: 1743981476,
+  ListFiles: 3557170708,
+  ListVMs: 398121865,
+  ResetVM: 4167799141,
+  ScreenshotVM: 3846775552,
+  StartVM: 3049061658,
+  StopVM: 2028595348,
+  StreamLogs: 642717214,
+  UploadFile: 3284072274,
+}
+
+let wailsRuntime: Promise<WailsRuntime | null> | null = null
+
+function getLegacyMethod<K extends keyof GoBridgeAPI>(name: K): GoBridgeAPI[K] | undefined {
   const bridge = window.GoBridge as GoBridgeAPI | undefined
   const method = bridge?.[name] ?? window[name]
-  if (!method) {
+  return method as GoBridgeAPI[K] | undefined
+}
+
+function loadWailsRuntime() {
+  const dynamicImport = new Function('specifier', 'return import(specifier)') as (
+    specifier: string
+  ) => Promise<unknown>
+
+  wailsRuntime ??= dynamicImport('/wails/runtime.js')
+    .then((module) => module as WailsRuntime)
+    .catch((error) => {
+      console.error('Failed to load Wails runtime:', error)
+      return null
+    })
+  return wailsRuntime
+}
+
+async function callMethod<K extends keyof GoBridgeAPI>(
+  name: K,
+  ...args: Parameters<GoBridgeAPI[K]>
+): Promise<Awaited<ReturnType<GoBridgeAPI[K]>>> {
+  const legacy = getLegacyMethod(name)
+  if (legacy) {
+    return (legacy as (...methodArgs: unknown[]) => Promise<Awaited<ReturnType<GoBridgeAPI[K]>>>)(...args)
+  }
+
+  const runtime = await loadWailsRuntime()
+  const methodID = wailsMethodIDs[name]
+  if (!runtime || !methodID) {
     throw new Error(`Native bridge method ${String(name)} is unavailable`)
   }
-  return method as GoBridgeAPI[K]
+  return runtime.Call.ByID(methodID, ...args) as Promise<Awaited<ReturnType<GoBridgeAPI[K]>>>
 }
 
 export const GoBridge: GoBridgeAPI = {
-  ListVMs: (...args) => requireMethod('ListVMs')(...args),
-  CreateVM: (...args) => requireMethod('CreateVM')(...args),
-  CreateVMWithConfig: (...args) => requireMethod('CreateVMWithConfig')(...args),
-  DeleteVM: (...args) => requireMethod('DeleteVM')(...args),
-  StartVM: (...args) => requireMethod('StartVM')(...args),
-  StopVM: (...args) => requireMethod('StopVM')(...args),
-  ResetVM: (...args) => requireMethod('ResetVM')(...args),
-  ScreenshotVM: (...args) => requireMethod('ScreenshotVM')(...args),
-  ListFiles: (...args) => requireMethod('ListFiles')(...args),
-  UploadFile: (...args) => requireMethod('UploadFile')(...args),
-  DownloadFile: (...args) => requireMethod('DownloadFile')(...args),
-  GetLogs: (...args) => requireMethod('GetLogs')(...args),
-  StreamLogs: (...args) => requireMethod('StreamLogs')(...args),
-  Execute: (...args) => requireMethod('Execute')(...args),
-  GetDefaultApps: (...args) => requireMethod('GetDefaultApps')(...args),
-  DownloadImage: (...args) => requireMethod('DownloadImage')(...args),
-  GetAvailableImages: (...args) => requireMethod('GetAvailableImages')(...args),
-  EnsureImageReady: (...args) => requireMethod('EnsureImageReady')(...args),
-  GetAppLogPath: (...args) => requireMethod('GetAppLogPath')(...args),
-  GetAppLogs: (...args) => requireMethod('GetAppLogs')(...args),
+  ListVMs: (...args) => callMethod('ListVMs', ...args),
+  CreateVM: (...args) => callMethod('CreateVM', ...args),
+  CreateVMWithConfig: (...args) => callMethod('CreateVMWithConfig', ...args),
+  DeleteVM: (...args) => callMethod('DeleteVM', ...args),
+  StartVM: (...args) => callMethod('StartVM', ...args),
+  StopVM: (...args) => callMethod('StopVM', ...args),
+  ResetVM: (...args) => callMethod('ResetVM', ...args),
+  ScreenshotVM: (...args) => callMethod('ScreenshotVM', ...args),
+  ListFiles: (...args) => callMethod('ListFiles', ...args),
+  UploadFile: (...args) => callMethod('UploadFile', ...args),
+  DownloadFile: (...args) => callMethod('DownloadFile', ...args),
+  GetLogs: (...args) => callMethod('GetLogs', ...args),
+  StreamLogs: (...args) => callMethod('StreamLogs', ...args),
+  Execute: (...args) => callMethod('Execute', ...args),
+  GetDefaultApps: (...args) => callMethod('GetDefaultApps', ...args),
+  DownloadImage: (...args) => callMethod('DownloadImage', ...args),
+  GetAvailableImages: (...args) => callMethod('GetAvailableImages', ...args),
+  EnsureImageReady: (...args) => callMethod('EnsureImageReady', ...args),
+  GetAppLogPath: (...args) => callMethod('GetAppLogPath', ...args),
+  GetAppLogs: (...args) => callMethod('GetAppLogs', ...args),
 }
