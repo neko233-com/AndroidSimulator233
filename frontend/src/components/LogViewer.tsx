@@ -1,11 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-
-interface LogEntry {
-	level: string
-	tag: string
-	message: string
-	pid: number
-}
+import type { LogEntry } from '../lib/types'
 
 interface LogViewerProps {
 	deviceId: string
@@ -43,7 +37,7 @@ export function LogViewer({ deviceId }: LogViewerProps) {
 	const loadLogs = async () => {
 		try {
 			const filterStr = filter ? `${filter}:* ${level}:*` : `*:${level}`
-			const result = await (window as any).GetLogs(deviceId, filterStr)
+			const result = await window.GetLogs(deviceId, filterStr)
 			setLogs(result || [])
 		} catch (err) {
 			console.error('Failed to load logs:', err)

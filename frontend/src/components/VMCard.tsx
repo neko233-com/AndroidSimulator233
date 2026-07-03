@@ -1,10 +1,4 @@
-interface VMInfo {
-	name: string
-	cpus: number
-	ram: string
-	android: string
-	status?: string
-}
+import { VMInfo } from '../lib/types'
 
 interface VMCardProps {
 	vm: VMInfo

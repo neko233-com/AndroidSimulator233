@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"path/filepath"
 
 	"github.com/neko233/AndroidSimulator233/internal/adb"
@@ -23,10 +24,15 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
-	dataDir := filepath.Join(ctx.Value("userDataDir").(string), "vms")
+	userDataDir, ok := ctx.Value("userDataDir").(string)
+	if !ok || userDataDir == "" {
+		log.Fatal("missing or invalid userDataDir in context")
+	}
+
+	dataDir := filepath.Join(userDataDir, "vms")
 	mgr, err := vm.NewVMManager(dataDir)
 	if err != nil {
-		panic(err)
+		log.Fatal("failed to create VM manager: ", err)
 	}
 
 	a.vmAPI = api.NewVMAPI(mgr)

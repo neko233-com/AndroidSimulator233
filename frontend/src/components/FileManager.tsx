@@ -1,10 +1,5 @@
 import { useState, useEffect } from 'react'
-
-interface FileEntry {
-  name: string
-  size: number
-  isDir: boolean
-}
+import type { FileEntry } from '../lib/types'
 
 interface FileManagerProps {
   deviceId: string
@@ -33,7 +28,7 @@ export function FileManager({ deviceId }: FileManagerProps) {
   const loadFiles = async (dirPath: string) => {
     setLoading(true)
     try {
-      const result = await (window as any).ListFiles(deviceId, dirPath)
+      const result = await window.ListFiles(deviceId, dirPath)
       setFiles(result || [])
     } catch (err) {
       console.error('Failed to load files:', err)

@@ -1,13 +1,6 @@
 import { useState, useEffect } from 'react'
 import { VMCard } from './VMCard'
-
-interface VMInfo {
-	name: string
-	cpus: number
-	ram: string
-	android: string
-	status?: string
-}
+import type { VMInfo } from '../lib/types'
 
 export function VMList() {
 	const [vms, setVMs] = useState<VMInfo[]>([])
@@ -19,7 +12,7 @@ export function VMList() {
 
 	const loadVMs = async () => {
 		try {
-			const result = await (window as any).ListVMs()
+			const result = await window.ListVMs()
 			setVMs(result || [])
 		} catch (err) {
 			console.error('Failed to load VMs:', err)
@@ -36,7 +29,7 @@ export function VMList() {
 		if (!android) return
 
 		try {
-			await (window as any).CreateVM(name, android)
+			await window.CreateVM(name, android)
 			loadVMs()
 		} catch (err) {
 			alert('Failed to create VM: ' + err)
@@ -47,7 +40,7 @@ export function VMList() {
 		if (!confirm(`Delete VM "${name}"?`)) return
 
 		try {
-			await (window as any).DeleteVM(name)
+			await window.DeleteVM(name)
 			loadVMs()
 		} catch (err) {
 			alert('Failed to delete VM: ' + err)

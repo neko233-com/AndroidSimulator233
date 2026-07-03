@@ -10,6 +10,19 @@ import (
 	"github.com/neko233/AndroidSimulator233/internal/adb"
 )
 
+// sanitizeLogcatFilter validates that a logcat filter expression contains only
+// safe characters. Allowed: alphanumeric, * : . _ - and space (for separating
+// multiple filter specs).
+func sanitizeLogcatFilter(filter string) (string, error) {
+	for _, c := range filter {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
+			c == '*' || c == ':' || c == '.' || c == '_' || c == '-' || c == ' ') {
+			return "", fmt.Errorf("invalid character in logcat filter: %q", string(c))
+		}
+	}
+	return filter, nil
+}
+
 type LogAPI struct {
 	adb *adb.Client
 }
@@ -26,7 +39,11 @@ type LogEntry struct {
 }
 
 func (a *LogAPI) GetLogs(deviceID, filter string) ([]LogEntry, error) {
-	cmd := fmt.Sprintf("logcat -d %s", filter)
+	safeFilter, err := sanitizeLogcatFilter(filter)
+	if err != nil {
+		return nil, fmt.Errorf("invalid filter: %w", err)
+	}
+	cmd := fmt.Sprintf("logcat -d %s", safeFilter)
 	output, err := a.adb.Shell(deviceID, cmd)
 	if err != nil {
 		return nil, err
@@ -47,7 +64,11 @@ func (a *LogAPI) GetLogs(deviceID, filter string) ([]LogEntry, error) {
 func (a *LogAPI) StreamLogs(deviceID, filter string) (<-chan LogEntry, error) {
 	args := []string{"-s", deviceID, "logcat"}
 	if filter != "" {
-		args = append(args, strings.Fields(filter)...)
+		safeFilter, err := sanitizeLogcatFilter(filter)
+		if err != nil {
+			return nil, fmt.Errorf("invalid filter: %w", err)
+		}
+		args = append(args, strings.Fields(safeFilter)...)
 	}
 	cmd := exec.Command(a.adb.GetPath(), args...)
 	stdout, err := cmd.StdoutPipe()

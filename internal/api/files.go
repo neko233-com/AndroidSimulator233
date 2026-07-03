@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -21,8 +22,27 @@ type FileEntry struct {
 	IsDir bool   `json:"isDir"`
 }
 
+// sanitizeADBPath validates that a path contains only safe characters for
+// embedding in an adb shell command. Allowed: alphanumeric, / . _ - and space.
+func sanitizeADBPath(path string) (string, error) {
+	for _, c := range path {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
+			c == '/' || c == '.' || c == '_' || c == '-' || c == ' ') {
+			return "", fmt.Errorf("invalid character in path: %q", string(c))
+		}
+	}
+	if path == "" {
+		return ".", nil
+	}
+	return path, nil
+}
+
 func (a *FileAPI) ListFiles(deviceID, path string) ([]FileEntry, error) {
-	output, err := a.adb.Shell(deviceID, "ls -la "+path)
+	safePath, err := sanitizeADBPath(path)
+	if err != nil {
+		return nil, fmt.Errorf("invalid path: %w", err)
+	}
+	output, err := a.adb.Shell(deviceID, "ls -la "+safePath)
 	if err != nil {
 		return nil, err
 	}

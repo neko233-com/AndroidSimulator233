@@ -25,7 +25,7 @@ export function Terminal({ deviceId }: TerminalProps) {
 
 		setLoading(true)
 		try {
-			const output = await (window as any).Execute(deviceId, cmd)
+			const output = await window.Execute(deviceId, cmd)
 			setHistory((prev) => [
 				...prev,
 				{ command: cmd, output: output || '', timestamp: Date.now() },
