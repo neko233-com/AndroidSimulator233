@@ -8,7 +8,14 @@ tasks:
   build:
     summary: Builds the application
     cmds:
+      - task: frontend:build
       - go build -o {{.BIN_DIR}}/{{.APP_NAME}}.exe .
+
+  frontend:build:
+    summary: Builds the frontend
+    dir: frontend
+    cmds:
+      - npm run build
 
   package:
     summary: Packages a production build of the application

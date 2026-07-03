@@ -24,3 +24,6 @@ Thumbs.db
 
 # Wails
 build/
+
+# Compose docs (auto-generated)
+docs/compose/
