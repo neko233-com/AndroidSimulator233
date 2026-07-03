@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v3/cmd/wails@latest
+
+      - name: Build
+        run: wails build
+
+      - name: Create Installer (Inno Setup)
+        uses: jrudolf/inno-setup-action@v1
+        with:
+          filepath: build/installer.iss
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: build/output/AndroidSimulator233-Setup.exe
+
+  release-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v3/cmd/wails@latest
+
+      - name: Build
+        run: wails build
+
+      - name: Create DMG
+        uses: create-dmg/create-dmg@v1
+        with:
+          title: AndroidSimulator233
+          app-path: bin/AndroidSimulator233.app
+          output: build/output/AndroidSimulator233.dmg
+
+      - name: Upload macOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: build/output/AndroidSimulator233.dmg
+
+  publish-release:
+    needs: [release-windows, release-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: artifacts/
+
+      - name: Download macOS Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-dmg
+          path: artifacts/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/AndroidSimulator233-Setup.exe
+            artifacts/AndroidSimulator233.dmg
+          draft: false
+          prerelease: false
+          generate_release_notes: true

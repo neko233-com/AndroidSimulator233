@@ -1,15 +1,22 @@
 package api
 
 import (
+	"fmt"
+
+	"github.com/neko233/AndroidSimulator233/internal/adb"
 	"github.com/neko233/AndroidSimulator233/internal/vm"
 )
 
 type VMAPI struct {
 	manager *vm.VMManager
+	adb     *adb.Client
 }
 
 func NewVMAPI(manager *vm.VMManager) *VMAPI {
-	return &VMAPI{manager: manager}
+	return &VMAPI{
+		manager: manager,
+		adb:     adb.NewClient("adb"),
+	}
 }
 
 type VMInfo struct {
@@ -17,6 +24,7 @@ type VMInfo struct {
 	CPUs    int    `json:"cpus"`
 	RAM     string `json:"ram"`
 	Android string `json:"android"`
+	Status  string `json:"status,omitempty"`
 }
 
 func (a *VMAPI) ListVMs() []VMInfo {
@@ -48,4 +56,28 @@ func (a *VMAPI) CreateVM(name, android string) (*VMInfo, error) {
 
 func (a *VMAPI) DeleteVM(name string) error {
 	return a.manager.Delete(name)
+}
+
+func (a *VMAPI) StartVM(name string) error {
+	vmConfig, ok := a.manager.Get(name)
+	if !ok {
+		return fmt.Errorf("VM %s not found", name)
+	}
+	return a.manager.StartVM(name, vmConfig)
+}
+
+func (a *VMAPI) StopVM(name string) error {
+	return a.manager.StopVM(name)
+}
+
+func (a *VMAPI) ResetVM(name string) error {
+	return a.manager.ResetVM(name)
+}
+
+func (a *VMAPI) ScreenshotVM(name, path string) error {
+	return a.manager.ScreenshotVM(name, path)
+}
+
+func (a *VMAPI) Execute(deviceID, command string) (string, error) {
+	return a.adb.Shell(deviceID, command)
 }

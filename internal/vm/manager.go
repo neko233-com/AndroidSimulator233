@@ -5,12 +5,15 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/neko233/AndroidSimulator233/internal/qemu"
 )
 
 type VMManager struct {
-	dataDir string
-	vms     map[string]*VMConfig
-	mu      sync.RWMutex
+	dataDir    string
+	vms        map[string]*VMConfig
+	qemu       *qemu.Manager
+	mu         sync.RWMutex
 }
 
 func NewVMManager(dataDir string) (*VMManager, error) {
@@ -21,6 +24,7 @@ func NewVMManager(dataDir string) (*VMManager, error) {
 	mgr := &VMManager{
 		dataDir: dataDir,
 		vms:     make(map[string]*VMConfig),
+		qemu:    qemu.NewManager(dataDir),
 	}
 
 	if err := mgr.loadAll(); err != nil {
@@ -101,6 +105,13 @@ func (m *VMManager) Delete(name string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	// Stop VM if running
+	if inst, ok := m.qemu.Get(name); ok {
+		if inst.IsRunning() {
+			inst.Stop()
+		}
+	}
+
 	path := filepath.Join(m.dataDir, name+".json")
 	if err := os.Remove(path); err != nil {
 		return err
@@ -108,4 +119,51 @@ func (m *VMManager) Delete(name string) error {
 
 	delete(m.vms, name+".json")
 	return nil
+}
+
+func (m *VMManager) StartVM(name string, config *VMConfig) error {
+	// Create QEMU config
+	qemuConfig := &qemu.QEMUConfig{
+		CPUs:    config.CPUs,
+		RAM:     config.RAM,
+		Disk:    filepath.Join(m.dataDir, name+".qcow2"),
+		Display: config.Display,
+		GPU:     config.GPU,
+		Network: config.Network,
+		ADBPort: 5555,
+		KVM:     true,
+	}
+
+	// Create QEMU instance
+	instance, err := m.qemu.Create(qemuConfig)
+	if err != nil {
+		return fmt.Errorf("failed to create QEMU instance: %w", err)
+	}
+
+	// Start the instance
+	return instance.Start()
+}
+
+func (m *VMManager) StopVM(name string) error {
+	inst, ok := m.qemu.Get(name)
+	if !ok {
+		return fmt.Errorf("VM %s not found", name)
+	}
+	return inst.Stop()
+}
+
+func (m *VMManager) ResetVM(name string) error {
+	inst, ok := m.qemu.Get(name)
+	if !ok {
+		return fmt.Errorf("VM %s not found", name)
+	}
+	return inst.Reset()
+}
+
+func (m *VMManager) ScreenshotVM(name, path string) error {
+	inst, ok := m.qemu.Get(name)
+	if !ok {
+		return fmt.Errorf("VM %s not found", name)
+	}
+	return inst.Screenshot(path)
 }

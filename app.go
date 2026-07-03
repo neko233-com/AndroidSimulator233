@@ -77,3 +77,23 @@ func (a *App) GetLogs(deviceID, filter string) ([]api.LogEntry, error) {
 func (a *App) StreamLogs(deviceID, filter string) (<-chan api.LogEntry, error) {
 	return a.logAPI.StreamLogs(deviceID, filter)
 }
+
+func (a *App) StartVM(name string) error {
+	return a.vmAPI.StartVM(name)
+}
+
+func (a *App) StopVM(name string) error {
+	return a.vmAPI.StopVM(name)
+}
+
+func (a *App) ResetVM(name string) error {
+	return a.vmAPI.ResetVM(name)
+}
+
+func (a *App) ScreenshotVM(name, path string) error {
+	return a.vmAPI.ScreenshotVM(name, path)
+}
+
+func (a *App) Execute(deviceID, command string) (string, error) {
+	return a.vmAPI.Execute(deviceID, command)
+}
