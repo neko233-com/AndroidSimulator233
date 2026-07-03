@@ -19,6 +19,12 @@ export interface LogEntry {
   pid: number
 }
 
+export interface ImageInfo {
+  version: string
+  downloaded: boolean
+  size: number
+}
+
 declare global {
   interface Window {
     GoBridge: {
@@ -36,6 +42,9 @@ declare global {
       StreamLogs(deviceID: string, filter: string): Promise<LogEntry[]>
       Execute(deviceID: string, command: string): Promise<string>
       GetDefaultApps(): Promise<string[]>
+      DownloadImage(version: string): Promise<void>
+      GetAvailableImages(): Promise<ImageInfo[]>
+      EnsureImageReady(version: string): Promise<string>
     }
   }
 }

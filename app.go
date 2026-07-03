@@ -11,10 +11,12 @@ import (
 )
 
 type App struct {
-	ctx     context.Context
-	vmAPI   *api.VMAPI
-	fileAPI *api.FileAPI
-	logAPI  *api.LogAPI
+	ctx       context.Context
+	vmAPI     *api.VMAPI
+	fileAPI   *api.FileAPI
+	logAPI    *api.LogAPI
+	imageMgr  *vm.ImageManager
+	downloader *vm.ImageDownloader
 }
 
 func NewApp() *App {
@@ -30,10 +32,16 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	dataDir := filepath.Join(userDataDir, "vms")
+	imageDir := filepath.Join(userDataDir, "images")
+
+	// Initialize managers
 	mgr, err := vm.NewVMManager(dataDir)
 	if err != nil {
 		log.Fatal("failed to create VM manager: ", err)
 	}
+
+	a.imageMgr = vm.NewImageManager(imageDir)
+	a.downloader = vm.NewImageDownloader(imageDir)
 
 	a.vmAPI = api.NewVMAPI(mgr)
 
@@ -58,6 +66,22 @@ func (a *App) DeleteVM(name string) error {
 	return a.vmAPI.DeleteVM(name)
 }
 
+func (a *App) StartVM(name string) error {
+	return a.vmAPI.StartVM(name)
+}
+
+func (a *App) StopVM(name string) error {
+	return a.vmAPI.StopVM(name)
+}
+
+func (a *App) ResetVM(name string) error {
+	return a.vmAPI.ResetVM(name)
+}
+
+func (a *App) ScreenshotVM(name, path string) error {
+	return a.vmAPI.ScreenshotVM(name, path)
+}
+
 func (a *App) ListFiles(deviceID, path string) ([]api.FileEntry, error) {
 	return a.fileAPI.ListFiles(deviceID, path)
 }
@@ -78,26 +102,23 @@ func (a *App) StreamLogs(deviceID, filter string) (<-chan api.LogEntry, error) {
 	return a.logAPI.StreamLogs(deviceID, filter)
 }
 
-func (a *App) StartVM(name string) error {
-	return a.vmAPI.StartVM(name)
+func (a *App) Execute(deviceID, command string) (string, error) {
+	return a.vmAPI.Execute(deviceID, command)
 }
 
 func (a *App) GetDefaultApps() []string {
 	return a.vmAPI.GetDefaultApps()
 }
 
-func (a *App) StopVM(name string) error {
-	return a.vmAPI.StopVM(name)
+func (a *App) DownloadImage(version string) error {
+	_, err := a.downloader.EnsureImage(version)
+	return err
 }
 
-func (a *App) ResetVM(name string) error {
-	return a.vmAPI.ResetVM(name)
+func (a *App) GetAvailableImages() []api.ImageInfo {
+	return a.vmAPI.GetAvailableImages()
 }
 
-func (a *App) ScreenshotVM(name, path string) error {
-	return a.vmAPI.ScreenshotVM(name, path)
-}
-
-func (a *App) Execute(deviceID, command string) (string, error) {
-	return a.vmAPI.Execute(deviceID, command)
+func (a *App) EnsureImageReady(version string) (string, error) {
+	return a.downloader.EnsureImage(version)
 }

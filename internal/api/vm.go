@@ -27,6 +27,12 @@ type VMInfo struct {
 	Status  string `json:"status,omitempty"`
 }
 
+type ImageInfo struct {
+	Version    string `json:"version"`
+	Downloaded bool   `json:"downloaded"`
+	Size       int64  `json:"size"`
+}
+
 func (a *VMAPI) ListVMs() []VMInfo {
 	vms := a.manager.List()
 	result := make([]VMInfo, len(vms))
@@ -84,4 +90,17 @@ func (a *VMAPI) Execute(deviceID, command string) (string, error) {
 
 func (a *VMAPI) GetDefaultApps() []string {
 	return vm.DefaultApps
+}
+
+func (a *VMAPI) GetAvailableImages() []ImageInfo {
+	images := vm.NewImageManager("/tmp").ListAvailable()
+	result := make([]ImageInfo, len(images))
+	for i, img := range images {
+		result[i] = ImageInfo{
+			Version:    img.Version,
+			Downloaded: img.Downloaded,
+			Size:       img.Size,
+		}
+	}
+	return result
 }

@@ -8,6 +8,8 @@ export function VMList() {
   const [showCreate, setShowCreate] = useState(false)
   const [newVMName, setNewVMName] = useState('')
   const [selectedAndroid, setSelectedAndroid] = useState('android-15')
+  const [downloading, setDownloading] = useState(false)
+  const [downloadProgress, setDownloadProgress] = useState('')
 
   useEffect(() => {
     loadVMs()
@@ -27,13 +29,23 @@ export function VMList() {
   const handleCreate = async () => {
     if (!newVMName.trim()) return
 
+    setDownloading(true)
+    setDownloadProgress('Ensuring Android image is ready...')
+
     try {
+      // Ensure image is downloaded
+      await GoBridge.EnsureImageReady(selectedAndroid)
+      
+      // Create VM
       await GoBridge.CreateVM(newVMName.trim(), selectedAndroid)
       setShowCreate(false)
       setNewVMName('')
       loadVMs()
     } catch (err) {
       alert('Failed to create VM: ' + err)
+    } finally {
+      setDownloading(false)
+      setDownloadProgress('')
     }
   }
 
@@ -99,6 +111,7 @@ export function VMList() {
                 placeholder="My Android Device"
                 className="w-full px-3 py-2 bg-gray-700 rounded text-white"
                 autoFocus
+                disabled={downloading}
               />
             </div>
 
@@ -108,6 +121,7 @@ export function VMList() {
                 value={selectedAndroid}
                 onChange={(e) => setSelectedAndroid(e.target.value)}
                 className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                disabled={downloading}
               >
                 <option value="android-15">Android 15 (Recommended)</option>
                 <option value="android-14">Android 14</option>
@@ -115,18 +129,29 @@ export function VMList() {
               </select>
             </div>
 
+            {downloading && (
+              <div className="mb-4 p-3 bg-blue-900/50 rounded">
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
+                  <span className="text-sm">{downloadProgress}</span>
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-2">
               <button
                 onClick={() => setShowCreate(false)}
                 className="flex-1 px-4 py-2 bg-gray-600 rounded hover:bg-gray-500"
+                disabled={downloading}
               >
                 Cancel
               </button>
               <button
                 onClick={handleCreate}
                 className="flex-1 px-4 py-2 bg-blue-600 rounded hover:bg-blue-500"
+                disabled={downloading || !newVMName.trim()}
               >
-                Create
+                {downloading ? 'Creating...' : 'Create'}
               </button>
             </div>
           </div>
