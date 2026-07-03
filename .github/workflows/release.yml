@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -30,16 +31,11 @@ jobs:
       - name: Build
         run: wails build
 
-      - name: Create Installer (Inno Setup)
-        uses: jrudolf/inno-setup-action@v1
-        with:
-          filepath: build/installer.iss
-
-      - name: Upload Windows Artifact
+      - name: Upload Windows Build
         uses: actions/upload-artifact@v4
         with:
-          name: windows-installer
-          path: build/output/AndroidSimulator233-Setup.exe
+          name: windows-build
+          path: bin/
 
   release-macos:
     runs-on: macos-latest
@@ -62,41 +58,41 @@ jobs:
       - name: Build
         run: wails build
 
-      - name: Create DMG
-        uses: create-dmg/create-dmg@v1
-        with:
-          title: AndroidSimulator233
-          app-path: bin/AndroidSimulator233.app
-          output: build/output/AndroidSimulator233.dmg
-
-      - name: Upload macOS Artifact
+      - name: Upload macOS Build
         uses: actions/upload-artifact@v4
         with:
-          name: macos-dmg
-          path: build/output/AndroidSimulator233.dmg
+          name: macos-build
+          path: bin/
 
   publish-release:
     needs: [release-windows, release-macos]
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - name: Download Windows Artifact
+      - name: Download Windows Build
         uses: actions/download-artifact@v4
         with:
-          name: windows-installer
-          path: artifacts/
+          name: windows-build
+          path: artifacts/windows/
 
-      - name: Download macOS Artifact
+      - name: Download macOS Build
         uses: actions/download-artifact@v4
         with:
-          name: macos-dmg
-          path: artifacts/
+          name: macos-build
+          path: artifacts/macos/
+
+      - name: Zip Windows Build
+        run: cd artifacts/windows && zip -r ../../AndroidSimulator233-Windows.zip .
+
+      - name: Zip macOS Build
+        run: cd artifacts/macos && zip -r ../../AndroidSimulator233-macOS.zip .
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/AndroidSimulator233-Setup.exe
-            artifacts/AndroidSimulator233.dmg
+            AndroidSimulator233-Windows.zip
+            AndroidSimulator233-macOS.zip
           draft: false
           prerelease: false
           generate_release_notes: true
