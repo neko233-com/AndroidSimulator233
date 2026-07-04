@@ -184,6 +184,66 @@ func (m *VMManager) CreateWithOptions(options CreateOptions) (*VMConfig, error) 
 	return config, nil
 }
 
+func (m *VMManager) UpdateWithOptions(name string, options CreateOptions) (*VMConfig, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	config, ok := m.vms[name+".json"]
+	if !ok {
+		return nil, fmt.Errorf("VM %s not found", name)
+	}
+
+	if options.Android != "" {
+		config.Android = options.Android
+	}
+	if options.CPUs > 0 {
+		config.CPUs = options.CPUs
+	}
+	if config.CPUs > 16 {
+		config.CPUs = 16
+	}
+	if options.RAM != "" {
+		config.RAM = options.RAM
+	}
+	if options.Resolution != "" {
+		config.Resolution = options.Resolution
+	}
+	if options.DPI > 0 {
+		config.DPI = options.DPI
+	}
+	if options.Performance != "" {
+		config.Performance = options.Performance
+	}
+	if options.Renderer != "" {
+		config.Renderer = options.Renderer
+	}
+	if options.MaxFPS > 0 {
+		config.MaxFPS = options.MaxFPS
+	}
+	config.Root = options.Root
+	if options.PhoneBrand != "" {
+		config.PhoneBrand = options.PhoneBrand
+	}
+	if options.PhoneModel != "" {
+		config.PhoneModel = options.PhoneModel
+	}
+	if config.Display == "" || strings.HasPrefix(config.Display, "vnc=") {
+		config.Display = "window"
+	}
+	if config.GPU == "" {
+		config.GPU = "virtio"
+	}
+	if config.Network == "" {
+		config.Network = "user"
+	}
+
+	path := filepath.Join(m.dataDir, name+".json")
+	if err := config.Save(path); err != nil {
+		return nil, err
+	}
+	return config, nil
+}
+
 func (m *VMManager) Get(name string) (*VMConfig, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

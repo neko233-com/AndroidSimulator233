@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { VMCard } from './VMCard'
+import { DeviceSettingsDialog } from './DeviceSettingsDialog'
 import { useI18n } from '../lib/i18n'
 import type { VMInfo } from '../lib/types'
 import { GoBridge, formatNativeError } from '../lib/types'
@@ -27,6 +28,7 @@ export function VMList({ vms, loading, onRefresh, onOpen }: VMListProps) {
   const [phoneBrand, setPhoneBrand] = useState('Xiaomi')
   const [phoneModel, setPhoneModel] = useState('14 Ultra')
   const [creating, setCreating] = useState(false)
+  const [settingsVM, setSettingsVM] = useState<VMInfo | null>(null)
 
   const applyPreset = (preset: 'low' | 'middle' | 'high' | 'custom') => {
     setSelectedPreset(preset)
@@ -399,9 +401,18 @@ export function VMList({ vms, loading, onRefresh, onOpen }: VMListProps) {
               onStart={handleStart}
               onDelete={handleDelete}
               onOpen={onOpen}
+              onSettings={setSettingsVM}
             />
           ))}
         </div>
+      )}
+
+      {settingsVM && (
+        <DeviceSettingsDialog
+          vm={settingsVM}
+          onClose={() => setSettingsVM(null)}
+          onSaved={onRefresh}
+        />
       )}
     </div>
   )

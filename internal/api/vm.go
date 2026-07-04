@@ -126,6 +126,42 @@ func (a *VMAPI) CreateVMWithConfig(request CreateVMRequest) (*VMInfo, error) {
 	}, nil
 }
 
+func (a *VMAPI) UpdateVMConfig(name string, request CreateVMRequest) (*VMInfo, error) {
+	config, err := a.manager.UpdateWithOptions(name, vm.CreateOptions{
+		Android:     request.Android,
+		CPUs:        request.CPUs,
+		RAM:         request.RAM,
+		Resolution:  request.Resolution,
+		DPI:         request.DPI,
+		Performance: request.Performance,
+		Renderer:    request.Renderer,
+		MaxFPS:      request.MaxFPS,
+		Root:        request.Root,
+		PhoneBrand:  request.PhoneBrand,
+		PhoneModel:  request.PhoneModel,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &VMInfo{
+		Name:        config.Name,
+		CPUs:        config.CPUs,
+		RAM:         config.RAM,
+		Android:     config.Android,
+		Resolution:  config.Resolution,
+		DPI:         config.DPI,
+		Performance: config.Performance,
+		Renderer:    config.Renderer,
+		MaxFPS:      config.MaxFPS,
+		Root:        config.Root,
+		PhoneBrand:  config.PhoneBrand,
+		PhoneModel:  config.PhoneModel,
+		Status:      a.manager.Status(config.Name),
+		ADBPort:     config.ADBPort,
+		VNCPort:     config.VNCPort,
+	}, nil
+}
+
 func (a *VMAPI) DeleteVM(name string) error {
 	return a.manager.Delete(name)
 }

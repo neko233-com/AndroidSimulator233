@@ -137,6 +137,25 @@ func (a *App) CreateVMWithConfig(name, android string, cpus int, ram, resolution
 	})
 }
 
+func (a *App) UpdateVMConfig(name, android string, cpus int, ram, resolution string, dpi int, performance, renderer string, maxFPS int, root bool, phoneBrand, phoneModel string) (*api.VMInfo, error) {
+	if err := a.ensureReady(); err != nil {
+		return nil, err
+	}
+	return a.vmAPI.UpdateVMConfig(name, api.CreateVMRequest{
+		Android:     android,
+		CPUs:        cpus,
+		RAM:         ram,
+		Resolution:  resolution,
+		DPI:         dpi,
+		Performance: performance,
+		Renderer:    renderer,
+		MaxFPS:      maxFPS,
+		Root:        root,
+		PhoneBrand:  phoneBrand,
+		PhoneModel:  phoneModel,
+	})
+}
+
 func (a *App) DeleteVM(name string) error {
 	if err := a.ensureReady(); err != nil {
 		return err

@@ -56,6 +56,7 @@ declare global {
     ListVMs?: GoBridgeAPI['ListVMs']
     CreateVM?: GoBridgeAPI['CreateVM']
     CreateVMWithConfig?: GoBridgeAPI['CreateVMWithConfig']
+    UpdateVMConfig?: GoBridgeAPI['UpdateVMConfig']
     DeleteVM?: GoBridgeAPI['DeleteVM']
     StartVM?: GoBridgeAPI['StartVM']
     StopVM?: GoBridgeAPI['StopVM']
@@ -78,6 +79,7 @@ export interface GoBridgeAPI {
       ListVMs(): Promise<VMInfo[]>
       CreateVM(name: string, android: string): Promise<VMInfo>
       CreateVMWithConfig(name: string, android: string, cpus: number, ram: string, resolution: string, dpi: number, performance: string, renderer: string, maxFps: number, root: boolean, phoneBrand: string, phoneModel: string): Promise<VMInfo>
+      UpdateVMConfig(name: string, android: string, cpus: number, ram: string, resolution: string, dpi: number, performance: string, renderer: string, maxFps: number, root: boolean, phoneBrand: string, phoneModel: string): Promise<VMInfo>
       DeleteVM(name: string): Promise<void>
       StartVM(name: string): Promise<void>
       StopVM(name: string): Promise<void>
@@ -124,6 +126,7 @@ const wailsMethodIDs: Partial<Record<keyof GoBridgeAPI, number>> = {
   StopVM: 2028595348,
   StreamLogs: 642717214,
   UploadFile: 3284072274,
+  UpdateVMConfig: 3468479291,
 }
 
 let wailsRuntime: Promise<WailsRuntime | null> | null = null
@@ -185,6 +188,7 @@ export const GoBridge: GoBridgeAPI = {
   ListVMs: (...args) => callMethod('ListVMs', ...args),
   CreateVM: (...args) => callMethod('CreateVM', ...args),
   CreateVMWithConfig: (...args) => callMethod('CreateVMWithConfig', ...args),
+  UpdateVMConfig: (...args) => callMethod('UpdateVMConfig', ...args),
   DeleteVM: (...args) => callMethod('DeleteVM', ...args),
   StartVM: (...args) => callMethod('StartVM', ...args),
   StopVM: (...args) => callMethod('StopVM', ...args),

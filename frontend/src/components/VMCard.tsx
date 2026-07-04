@@ -7,9 +7,10 @@ interface VMCardProps {
   onStart: (name: string) => void
   onDelete: (name: string) => void
   onOpen: (name: string) => void
+  onSettings: (vm: VMInfo) => void
 }
 
-export function VMCard({ vm, onStart, onDelete, onOpen }: VMCardProps) {
+export function VMCard({ vm, onStart, onDelete, onOpen, onSettings }: VMCardProps) {
   const { t } = useI18n()
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -86,7 +87,7 @@ export function VMCard({ vm, onStart, onDelete, onOpen }: VMCardProps) {
                 type="button"
                 onClick={() => {
                   setMenuOpen(false)
-                  onOpen(vm.name)
+                  onSettings(vm)
                 }}
                 className="flex w-full items-center gap-3 px-5 py-3 text-left text-lg hover:bg-white/10"
               >
