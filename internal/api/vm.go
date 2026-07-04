@@ -37,8 +37,6 @@ type VMInfo struct {
 	Status      string `json:"status,omitempty"`
 	ADBPort     int    `json:"adbPort,omitempty"`
 	VNCPort     int    `json:"vncPort,omitempty"`
-	Backend     string `json:"backend,omitempty"`
-	HostIndex   string `json:"hostIndex,omitempty"`
 }
 
 type ImageInfo struct {
@@ -82,8 +80,6 @@ func (a *VMAPI) ListVMs() []VMInfo {
 			Status:      a.manager.Status(vm.Name),
 			ADBPort:     vm.ADBPort,
 			VNCPort:     vm.VNCPort,
-			Backend:     vm.Backend,
-			HostIndex:   vm.HostIndex,
 		}
 	}
 	return result
@@ -127,8 +123,6 @@ func (a *VMAPI) CreateVMWithConfig(request CreateVMRequest) (*VMInfo, error) {
 		Status:      "stopped",
 		ADBPort:     config.ADBPort,
 		VNCPort:     config.VNCPort,
-		Backend:     config.Backend,
-		HostIndex:   config.HostIndex,
 	}, nil
 }
 

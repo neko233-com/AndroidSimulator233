@@ -33,7 +33,7 @@ export function VMCard({ vm, onStart, onDelete, onOpen }: VMCardProps) {
         className="relative h-[160px] w-[286px] flex-none overflow-hidden rounded-lg border border-white/15 bg-[#1f2b3a] text-left shadow-inner"
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_35%,rgba(68,180,255,0.55),transparent_24%),linear-gradient(130deg,#0f5486_0%,#122a4a_45%,#0b1320_100%)]" />
-        <div className="absolute left-4 top-3 rounded-full bg-black/35 px-3 py-1 text-sm"># {vm.hostIndex ?? 0}</div>
+        <div className="absolute left-4 top-3 rounded-full bg-black/35 px-3 py-1 text-sm"># 0</div>
         <div className="absolute right-9 top-7 grid grid-cols-2 gap-2">
           {['bg-cyan-300', 'bg-amber-300', 'bg-violet-300', 'bg-rose-300'].map((color) => (
             <span key={color} className={`h-4 w-4 rounded ${color}`} />

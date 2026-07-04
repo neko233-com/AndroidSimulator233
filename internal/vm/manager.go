@@ -2,15 +2,14 @@ package vm
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strconv"
+	"strings"
 	"sync"
+	"time"
 
-	"github.com/neko233/AndroidSimulator233/internal/hostcli"
 	"github.com/neko233/AndroidSimulator233/internal/qemu"
 )
 
@@ -18,7 +17,6 @@ type VMManager struct {
 	dataDir string
 	vms     map[string]*VMConfig
 	qemu    *qemu.Manager
-	host    *hostcli.Client
 	mu      sync.RWMutex
 }
 
@@ -44,16 +42,10 @@ func NewVMManager(dataDir string) (*VMManager, error) {
 		return nil, fmt.Errorf("failed to create data dir: %w", err)
 	}
 
-	host, err := hostcli.NewClient()
-	if err != nil {
-		log.Printf("host engine unavailable: %v", err)
-	}
-
 	mgr := &VMManager{
 		dataDir: dataDir,
 		vms:     make(map[string]*VMConfig),
 		qemu:    qemu.NewManager(dataDir),
-		host:    host,
 	}
 
 	if err := mgr.loadAll(); err != nil {
@@ -90,6 +82,7 @@ func (m *VMManager) loadAll() error {
 		if err := config.Load(path); err != nil {
 			continue
 		}
+		m.normalizeLoadedConfig(config)
 
 		m.vms[entry.Name()] = config
 	}
@@ -158,7 +151,7 @@ func (m *VMManager) CreateWithOptions(options CreateOptions) (*VMConfig, error) 
 		phoneModel = "14 Ultra"
 	}
 
-	vncDisplay, vncPort, adbPort := m.allocatePorts()
+	_, vncPort, adbPort := m.allocatePorts()
 	config := &VMConfig{
 		Name:        name,
 		CPUs:        cpus,
@@ -173,11 +166,9 @@ func (m *VMManager) CreateWithOptions(options CreateOptions) (*VMConfig, error) 
 		PhoneBrand:  phoneBrand,
 		PhoneModel:  phoneModel,
 		Disk:        filepath.Join(m.dataDir, name+".qcow2"),
-		Display:     fmt.Sprintf("vnc=:%d,websocket=%d", vncDisplay, vncPort),
+		Display:     "window",
 		ADBPort:     adbPort,
 		VNCPort:     vncPort,
-		Backend:     "host",
-		HostIndex:   defaultHostIndex(len(m.vms)),
 		GPU:         "virtio",
 		Network:     "user",
 		FirstBoot:   true,
@@ -235,18 +226,20 @@ func (m *VMManager) Delete(name string) error {
 }
 
 func (m *VMManager) StartVM(name string, config *VMConfig) error {
-	if config.ADBPort == 0 || config.VNCPort == 0 || config.Display == "" || config.Disk == "" {
+	m.normalizeLoadedConfig(config)
+
+	if config.ADBPort == 0 || config.VNCPort == 0 || config.Display == "" || strings.HasPrefix(config.Display, "vnc=") || config.Disk == "" {
 		m.mu.Lock()
-		if config.ADBPort == 0 || config.VNCPort == 0 || config.Display == "" || config.Disk == "" {
-			vncDisplay, vncPort, adbPort := m.allocatePorts()
+		if config.ADBPort == 0 || config.VNCPort == 0 || config.Display == "" || strings.HasPrefix(config.Display, "vnc=") || config.Disk == "" {
+			_, vncPort, adbPort := m.allocatePorts()
 			if config.ADBPort == 0 {
 				config.ADBPort = adbPort
 			}
 			if config.VNCPort == 0 {
 				config.VNCPort = vncPort
 			}
-			if config.Display == "" {
-				config.Display = fmt.Sprintf("vnc=:%d,websocket=%d", vncDisplay, config.VNCPort)
+			if config.Display == "" || strings.HasPrefix(config.Display, "vnc=") {
+				config.Display = "window"
 			}
 			if config.Disk == "" {
 				config.Disk = filepath.Join(m.dataDir, name+".qcow2")
@@ -256,57 +249,56 @@ func (m *VMManager) StartVM(name string, config *VMConfig) error {
 		m.mu.Unlock()
 	}
 
+	useSDKEmulator := false
+	if _, err := os.Stat(config.Disk); err != nil {
+		useSDKEmulator = true
+	}
+	m.appendRuntimeLog("starting %s cpus=%d ram=%s resolution=%s adb=%d sdk=%t", name, config.CPUs, config.RAM, config.Resolution, config.ADBPort, useSDKEmulator)
+
 	// Create QEMU config
 	qemuConfig := &qemu.QEMUConfig{
-		CPUs:    config.CPUs,
-		RAM:     config.RAM,
-		Disk:    config.Disk,
-		Display: config.Display,
-		GPU:     config.GPU,
-		Network: config.Network,
-		ADBPort: config.ADBPort,
-		KVM:     true,
+		Name:           config.Name,
+		CPUs:           config.CPUs,
+		RAM:            config.RAM,
+		Disk:           config.Disk,
+		Display:        config.Display,
+		Resolution:     config.Resolution,
+		GPU:            config.GPU,
+		Network:        config.Network,
+		ADBPort:        config.ADBPort,
+		KVM:            true,
+		UseSDKEmulator: useSDKEmulator,
+		AVDName:        qemu.SDKAVDName(config.Name),
+		LogDir:         filepath.Join(m.dataDir, "logs"),
 	}
 
 	// Create QEMU instance
 	instance, err := m.qemu.CreateWithID(name, qemuConfig)
 	if err != nil {
-		return m.startHost(name, config, fmt.Errorf("failed to create QEMU instance: %w", err))
+		return fmt.Errorf("failed to create QEMU instance: %w", err)
 	}
 
 	// Start the instance
 	if err := instance.Start(); err != nil {
-		return m.startHost(name, config, err)
+		m.appendRuntimeLog("start failed %s: %v", name, err)
+		return err
 	}
+	m.appendRuntimeLog("started %s status=%s", name, instance.GetStatus())
 	return nil
 }
 
 func (m *VMManager) StopVM(name string) error {
 	inst, ok := m.qemu.Get(name)
-	if ok && inst.IsRunning() {
+	if ok {
 		return inst.Stop()
-	}
-	if config, exists := m.Get(name); exists && m.host != nil {
-		index := config.HostIndex
-		if index == "" {
-			index = "0"
-		}
-		return m.host.Stop(index)
 	}
 	return fmt.Errorf("VM %s not running", name)
 }
 
 func (m *VMManager) ResetVM(name string) error {
 	inst, ok := m.qemu.Get(name)
-	if ok && inst.IsRunning() {
+	if ok {
 		return inst.Reset()
-	}
-	if config, exists := m.Get(name); exists && m.host != nil {
-		index := config.HostIndex
-		if index == "" {
-			index = "0"
-		}
-		return m.host.Restart(index)
 	}
 	return fmt.Errorf("VM %s not running", name)
 }
@@ -321,63 +313,10 @@ func (m *VMManager) ScreenshotVM(name, path string) error {
 
 func (m *VMManager) Status(name string) string {
 	inst, ok := m.qemu.Get(name)
-	if ok {
-		status := inst.GetStatus()
-		if status == "running" || status == "starting" {
-			return status
-		}
+	if !ok {
+		return "stopped"
 	}
-	if config, exists := m.Get(name); exists && m.host != nil {
-		index := config.HostIndex
-		if index == "" {
-			index = "0"
-		}
-		info, err := m.host.Info(index)
-		if err != nil {
-			return "stopped"
-		}
-		if info.IsAndroidStarted || info.IsProcessStarted {
-			return "running"
-		}
-	}
-	return "stopped"
-}
-
-func (m *VMManager) startHost(name string, config *VMConfig, qemuErr error) error {
-	if m.host == nil {
-		return fmt.Errorf("QEMU start failed and host engine is not configured: %w", qemuErr)
-	}
-
-	index, err := m.host.EnsureIndex(config.HostIndex)
-	if err != nil {
-		return fmt.Errorf("QEMU start failed (%v); host engine device unavailable: %w", qemuErr, err)
-	}
-	if index != config.HostIndex {
-		config.HostIndex = index
-		config.Backend = "host"
-		_ = config.Save(filepath.Join(m.dataDir, name+".json"))
-	}
-
-	hostConfig := hostcli.Config{
-		Name:        config.Name,
-		CPUs:        config.CPUs,
-		RAM:         config.RAM,
-		Resolution:  config.Resolution,
-		DPI:         config.DPI,
-		Performance: config.Performance,
-		Renderer:    config.Renderer,
-		MaxFPS:      config.MaxFPS,
-		Root:        config.Root,
-		PhoneBrand:  config.PhoneBrand,
-		PhoneModel:  config.PhoneModel,
-	}
-	if err := m.host.ApplyConfig(index, hostConfig); err != nil {
-		return fmt.Errorf("QEMU start failed (%v); host engine configuration failed: %w", qemuErr, err)
-	}
-	if err := m.host.Start(index); err != nil {
-		return fmt.Errorf("QEMU start failed (%v); host engine start failed: %w", qemuErr, err)
-	}
-	return nil
+	return inst.GetStatus()
 }
 
 func (m *VMManager) allocatePorts() (vncDisplay int, vncPort int, adbPort int) {
@@ -403,13 +342,6 @@ func (m *VMManager) allocatePorts() (vncDisplay int, vncPort int, adbPort int) {
 	return vncPort - 5700, vncPort, adbPort
 }
 
-func defaultHostIndex(existing int) string {
-	if existing <= 0 {
-		return "0"
-	}
-	return strconv.Itoa(existing)
-}
-
 var vmNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._ -]{0,63}$`)
 
 func normalizeName(name string) (string, error) {
@@ -417,4 +349,41 @@ func normalizeName(name string) (string, error) {
 		return "", fmt.Errorf("VM name must be 1-64 characters and may contain letters, numbers, spaces, dots, underscores, and dashes")
 	}
 	return name, nil
+}
+
+func (m *VMManager) normalizeLoadedConfig(config *VMConfig) {
+	changed := false
+	if config.Display == "" || strings.HasPrefix(config.Display, "vnc=") {
+		config.Display = "window"
+		changed = true
+	}
+	if config.Disk == "" {
+		config.Disk = filepath.Join(m.dataDir, config.Name+".qcow2")
+		changed = true
+	}
+	if config.GPU == "" {
+		config.GPU = "virtio"
+		changed = true
+	}
+	if config.Network == "" {
+		config.Network = "user"
+		changed = true
+	}
+	if changed {
+		_ = config.Save(filepath.Join(m.dataDir, config.Name+".json"))
+	}
+}
+
+func (m *VMManager) appendRuntimeLog(format string, args ...interface{}) {
+	logDir := filepath.Join(m.dataDir, "logs")
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		return
+	}
+	file, err := os.OpenFile(filepath.Join(logDir, "runtime.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+	line := fmt.Sprintf(format, args...)
+	_, _ = fmt.Fprintf(file, "%s %s\n", time.Now().Format(time.RFC3339), line)
 }

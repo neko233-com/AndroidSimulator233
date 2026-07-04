@@ -14,8 +14,6 @@ export interface VMInfo {
   status?: string
   adbPort?: number
   vncPort?: number
-  backend?: string
-  hostIndex?: string
 }
 
 export interface VMCreateOptions {

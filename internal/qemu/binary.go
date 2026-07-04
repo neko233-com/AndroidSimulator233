@@ -2,12 +2,15 @@ package qemu
 
 import (
 	"archive/zip"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 const (
@@ -22,32 +25,52 @@ const (
 )
 
 func ResolveQEMUPath() (string, error) {
-	// 1. Check bundled location
-	bundled := bundledPath()
-	if _, err := os.Stat(bundled); err == nil {
-		return bundled, nil
+	exe := qemuExecutableName()
+	var checked []string
+
+	for _, candidate := range qemuCandidates(exe) {
+		if candidate == "" {
+			continue
+		}
+		checked = append(checked, candidate)
+		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+			return candidate, nil
+		}
 	}
 
-	// 2. Try to download if not found
-	if err := DownloadQEMU(); err != nil {
-		// 3. Check system PATH as fallback
-		exe := qemuBinaryLinux
-		switch runtime.GOOS {
-		case "windows":
-			exe = qemuBinaryWindows
-		case "darwin":
-			exe = qemuBinaryDarwin
-		}
-
-		path, err := findInPath(exe)
-		if err == nil {
-			return path, nil
-		}
-
-		return "", fmt.Errorf("QEMU not found and failed to download: %w", err)
+	if path, err := exec.LookPath(exe); err == nil {
+		return path, nil
 	}
 
-	return bundledPath(), nil
+	return "", fmt.Errorf("QEMU runtime not found. Put %s under %s, set ANDROIDSIM233_QEMU, or add QEMU to PATH. Checked: %s", exe, bundledDir(), strings.Join(checked, "; "))
+}
+
+func ResolveAndroidEmulatorPath() (string, error) {
+	if runtime.GOOS != "windows" {
+		return "", fmt.Errorf("Android SDK emulator fallback is only configured on Windows")
+	}
+
+	var checked []string
+	if env := strings.TrimSpace(os.Getenv("ANDROIDSIM233_EMULATOR")); env != "" {
+		checked = append(checked, env)
+		if info, err := os.Stat(env); err == nil && !info.IsDir() {
+			return env, nil
+		}
+	}
+
+	for _, root := range androidSDKRoots() {
+		candidate := filepath.Join(root, "emulator", "emulator.exe")
+		checked = append(checked, candidate)
+		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+			return candidate, nil
+		}
+	}
+
+	if path, err := exec.LookPath("emulator.exe"); err == nil {
+		return path, nil
+	}
+
+	return "", fmt.Errorf("Android SDK emulator not found. Install Android SDK Emulator or set ANDROIDSIM233_EMULATOR. Checked: %s", strings.Join(checked, "; "))
 }
 
 func bundledDir() string {
@@ -65,14 +88,7 @@ func bundledDir() string {
 }
 
 func bundledPath() string {
-	exe := qemuBinaryLinux
-	switch runtime.GOOS {
-	case "windows":
-		exe = qemuBinaryWindows
-	case "darwin":
-		exe = qemuBinaryDarwin
-	}
-	return filepath.Join(bundledDir(), exe)
+	return filepath.Join(bundledDir(), qemuExecutableName())
 }
 
 func findInPath(name string) (string, error) {
@@ -101,7 +117,104 @@ func findInPath(name string) (string, error) {
 	return "", fmt.Errorf("%s not found in PATH", name)
 }
 
+func qemuExecutableName() string {
+	switch runtime.GOOS {
+	case "windows":
+		return qemuBinaryWindows
+	case "darwin":
+		return qemuBinaryDarwin
+	default:
+		return qemuBinaryLinux
+	}
+}
+
+func qemuCandidates(exe string) []string {
+	candidates := []string{}
+	if env := strings.TrimSpace(os.Getenv("ANDROIDSIM233_QEMU")); env != "" {
+		candidates = append(candidates, env)
+	}
+	for _, configPath := range qemuRuntimeConfigPaths() {
+		if path := readQEMUPath(configPath); path != "" {
+			candidates = append(candidates, path)
+		}
+	}
+	candidates = append(candidates,
+		bundledPath(),
+		filepath.Join(filepath.Dir(bundledDir()), exe),
+	)
+	if runtime.GOOS == "windows" {
+		candidates = append(candidates,
+			filepath.Join(os.Getenv("ProgramFiles"), "qemu", exe),
+			filepath.Join(os.Getenv("ProgramFiles"), "QEMU", exe),
+		)
+	}
+	for _, root := range androidSDKRoots() {
+		candidates = append(candidates, filepath.Join(root, "emulator", "qemu", "windows-x86_64", exe))
+	}
+	return candidates
+}
+
+func androidSDKRoots() []string {
+	if runtime.GOOS != "windows" {
+		return nil
+	}
+
+	seen := map[string]bool{}
+	var roots []string
+	add := func(path string) {
+		path = strings.TrimSpace(path)
+		if path == "" {
+			return
+		}
+		cleaned := filepath.Clean(path)
+		key := strings.ToLower(cleaned)
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		roots = append(roots, cleaned)
+	}
+
+	add(os.Getenv("ANDROID_HOME"))
+	add(os.Getenv("ANDROID_SDK_ROOT"))
+	if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
+		add(filepath.Join(localAppData, "Android", "Sdk"))
+	}
+	add(`C:\Android\Sdk`)
+	add(`D:\Android\Sdk`)
+	add(`D:\IDE\Android\Sdk`)
+	return roots
+}
+
+func qemuRuntimeConfigPaths() []string {
+	paths := []string{}
+	if appData := strings.TrimSpace(os.Getenv("APPDATA")); appData != "" {
+		paths = append(paths, filepath.Join(appData, "AndroidSimulator233", "runtime.json"))
+	}
+	if exe, err := os.Executable(); err == nil {
+		paths = append(paths, filepath.Join(filepath.Dir(exe), "runtime.json"))
+	}
+	return paths
+}
+
+func readQEMUPath(path string) string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	trimmed := strings.TrimPrefix(string(data), "\ufeff")
+	var config struct {
+		QEMUPath string `json:"qemuPath"`
+	}
+	if err := json.Unmarshal([]byte(trimmed), &config); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(config.QEMUPath)
+}
+
 func DownloadQEMU() error {
+	return fmt.Errorf("automatic QEMU download is not configured; install or bundle QEMU instead")
+
 	var downloadURL string
 	switch runtime.GOOS {
 	case "windows":
