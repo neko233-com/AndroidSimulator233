@@ -30,10 +30,13 @@ export function DeviceSettingsDialog({ vm, onClose, onSaved }: DeviceSettingsDia
   const [ram, setRAM] = useState(vm.ram || '2G')
   const [resolution, setResolution] = useState(vm.resolution || '1280x720')
   const [dpi, setDPI] = useState(vm.dpi || 240)
-  const [performance, setPerformance] = useState(vm.performance || 'middle')
-  const [renderer, setRenderer] = useState(vm.renderer || 'vulkan')
-  const [maxFPS, setMaxFPS] = useState(vm.maxFps || 60)
+  const [performance, setPerformance] = useState(vm.performance === 'high' ? 'custom' : vm.performance || 'custom')
+  const renderer = 'vulkan'
+  const [maxFPS, setMaxFPS] = useState(vm.maxFps || 120)
   const [root, setRoot] = useState(Boolean(vm.root))
+  const [memoryStrategy, setMemoryStrategy] = useState('auto')
+  const [forceDiscreteGpu, setForceDiscreteGpu] = useState(true)
+  const [smartOptimizeMemory, setSmartOptimizeMemory] = useState(true)
   const [phoneBrand, setPhoneBrand] = useState(vm.phoneBrand || 'Xiaomi')
   const [phoneModel, setPhoneModel] = useState(vm.phoneModel || '14 Ultra')
   const [saving, setSaving] = useState(false)
@@ -85,56 +88,56 @@ export function DeviceSettingsDialog({ vm, onClose, onSaved }: DeviceSettingsDia
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="h-[min(900px,calc(100vh-36px))] w-[min(1380px,calc(100vw-36px))] overflow-hidden rounded-lg border border-white/15 bg-[#202020] shadow-2xl">
-        <div className="flex h-14 items-center border-b border-white/10 px-6">
-          <div className="text-xl">{t('deviceSettings')}</div>
+      <div className="h-[min(688px,100vh)] w-[min(940px,100vw)] overflow-hidden rounded-[6px] border border-white/15 bg-[#202020] shadow-2xl">
+        <div className="flex h-[52px] items-center border-b border-white/10 px-4">
+          <div className="text-[14px] font-semibold">{t('deviceSettings')}</div>
           <div className="ml-4 text-sm text-gray-400">{vm.name}</div>
-          <button type="button" onClick={onClose} className="ml-auto grid h-10 w-10 place-items-center rounded hover:bg-white/10">
+          <button type="button" onClick={save} className="ml-auto grid h-9 w-9 place-items-center rounded hover:bg-white/10" disabled={saving}>
             ×
           </button>
         </div>
 
-        <div className="flex h-[calc(100%-56px)]">
-          <nav className="w-[360px] flex-none px-6 py-7">
-            <div className="space-y-3">
+        <div className="flex h-[calc(100%-52px)]">
+          <nav className="w-[240px] flex-none px-4 py-5">
+            <div className="space-y-2">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex h-[72px] w-full items-center gap-5 rounded-md px-8 text-left text-xl ${
+                  className={`flex h-12 w-full items-center gap-4 rounded-[4px] px-5 text-left text-[16px] font-semibold ${
                     activeTab === tab.id ? 'border-l-4 border-sky-400 bg-white/10' : 'hover:bg-white/5'
                   }`}
                 >
-                  <span className="w-8 text-2xl">{tab.icon}</span>
+                  <span className="w-7 text-xl">{tab.icon}</span>
                   <span>{tab.label}</span>
                 </button>
               ))}
             </div>
           </nav>
 
-          <main className="min-w-0 flex-1 overflow-y-auto px-9 py-8">
-            <h2 className="mb-8 text-[34px] font-medium">{tabs.find((tab) => tab.id === activeTab)?.label}</h2>
+          <main className="min-w-0 flex-1 overflow-y-auto px-6 py-5">
+            <h2 className="mb-6 text-[32px] font-medium">{tabs.find((tab) => tab.id === activeTab)?.label}</h2>
             {activeTab === 'performance' && (
-              <div className="max-w-5xl space-y-2">
-                <SelectRow icon="▧" label={t('renderer')} value={renderer} onChange={setRenderer} options={[
-                  ['vulkan', 'Vulkan'],
-                  ['directx', 'DirectX'],
-                ]} />
-                <SelectRow icon="▤" label={t('performance')} value={performance} onChange={setPerformance} options={[
+              <div className="max-w-[650px] space-y-1.5">
+                <StaticRow icon="▧" label={t('graphicsRenderingMode')} description={t('graphicsRenderingModeDesc')} value={t('vulkanMode')} />
+                <SelectRow icon="▤" label={t('performanceSettings')} value={performance} onChange={setPerformance} options={[
                   ['low', t('lowPower')],
                   ['middle', t('balanced')],
                   ['high', t('highPerformance')],
                   ['custom', t('custom')],
                 ]} />
-                <SelectRow icon="▥" label={t('cpu')} value={String(cpus)} onChange={(value) => setCPUs(Number(value))} options={cpuOptions.map((value) => [String(value), `${value} ${t('cores')}`])} />
-                <SelectRow icon="▥" label={t('memory')} value={ram} onChange={setRAM} options={ramOptions.map((value) => [value, value])} />
-                <ToggleRow icon="□" label={t('rootPermission')} enabled={root} onChange={setRoot} enabledLabel={t('enabled')} disabledLabel={t('disabled')} />
+                <SelectRow icon="▥" label={t('memoryStrategy')} value={memoryStrategy} onChange={setMemoryStrategy} options={[
+                  ['auto', t('autoAdjust')],
+                  ['performance', t('highPerformance')],
+                ]} />
+                <ToggleRow icon="▣" label={t('forceDiscreteGpu')} enabled={forceDiscreteGpu} onChange={setForceDiscreteGpu} enabledLabel={t('enabled')} disabledLabel={t('disabled')} />
+                <ToggleRow icon="▤" label={t('smartOptimizeMemory')} description={t('smartOptimizeMemoryDesc')} enabled={smartOptimizeMemory} onChange={setSmartOptimizeMemory} enabledLabel={t('enabled')} disabledLabel={t('disabled')} />
               </div>
             )}
 
             {activeTab === 'display' && (
-              <div className="max-w-5xl space-y-2">
+              <div className="max-w-[650px] space-y-1.5">
                 <SelectRow icon="▣" label={t('resolutionSettings')} value={resolution} onChange={setResolution} options={resolutions.map((value) => [value, value.replace('x', ' × ')])} />
                 <SelectRow icon="FPS" label={t('frameRate')} value={String(maxFPS)} onChange={(value) => setMaxFPS(Number(value))} options={fpsOptions.map((value) => [String(value), `${value} FPS`])} />
                 <SelectRow icon="▧" label={t('dpi')} value={String(dpi)} onChange={(value) => setDPI(Number(value))} options={dpiOptions.map((value) => [String(value), String(value)])} />
@@ -145,48 +148,42 @@ export function DeviceSettingsDialog({ vm, onClose, onSaved }: DeviceSettingsDia
             )}
 
             {activeTab === 'audio' && (
-              <div className="max-w-5xl space-y-2">
+              <div className="max-w-[650px] space-y-1.5">
                 <StaticRow icon="◖" label={t('speaker')} value={t('enabled')} />
                 <StaticRow icon="◉" label={t('microphone')} value={t('disabled')} />
               </div>
             )}
 
             {activeTab === 'network' && (
-              <div className="max-w-5xl space-y-2">
+              <div className="max-w-[650px] space-y-1.5">
                 <StaticRow icon="◎" label={t('networkMode')} value="NAT" />
                 <StaticRow icon="↔" label={t('adbEndpoint')} value={vm.adbPort ? `127.0.0.1:${vm.adbPort}` : t('notAssigned')} />
               </div>
             )}
 
             {activeTab === 'model' && (
-              <div className="max-w-5xl space-y-2">
+              <div className="max-w-[650px] space-y-1.5">
                 <SelectRow icon="▯" label={t('phoneModel')} value={`${phoneBrand}|${phoneModel}`} onChange={selectPhone} options={phoneOptions.map(([brand, model]) => [`${brand}|${model}`, `${brand} ${model}`])} />
                 <StaticRow icon="ID" label={t('androidVersion')} value={(vm.android || 'android-15').replace('android-', 'Android ')} />
               </div>
             )}
 
             {activeTab === 'developer' && (
-              <div className="max-w-5xl space-y-2">
+              <div className="max-w-[650px] space-y-1.5">
+                <SelectRow icon="▥" label={t('cpu')} value={String(cpus)} onChange={(value) => setCPUs(Number(value))} options={cpuOptions.map((value) => [String(value), `${value} ${t('cores')}`])} />
+                <SelectRow icon="▥" label={t('memory')} value={ram} onChange={setRAM} options={ramOptions.map((value) => [value, value])} />
                 <StaticRow icon="ADB" label={t('adbEndpoint')} value={vm.adbPort ? `127.0.0.1:${vm.adbPort}` : t('notAssigned')} />
                 <ToggleRow icon="□" label={t('rootPermission')} enabled={root} onChange={setRoot} enabledLabel={t('enabled')} disabledLabel={t('disabled')} />
               </div>
             )}
 
             {activeTab === 'other' && (
-              <div className="max-w-5xl space-y-2">
+              <div className="max-w-[650px] space-y-1.5">
                 <StaticRow icon="▦" label={t('diskCleanup')} value={t('availableAfterShutdown')} />
                 <StaticRow icon="↺" label={t('backupRestore')} value={t('availableAfterShutdown')} />
               </div>
             )}
 
-            <div className="mt-8 flex max-w-5xl justify-end gap-3 border-t border-white/10 pt-5">
-              <button type="button" onClick={onClose} className="h-11 min-w-28 rounded bg-white/10 px-5 hover:bg-white/15" disabled={saving}>
-                {t('cancel')}
-              </button>
-              <button type="button" onClick={save} className="h-11 min-w-32 rounded bg-sky-500 px-5 font-medium text-black hover:bg-sky-400" disabled={saving}>
-                {saving ? t('saving') : t('save')}
-              </button>
-            </div>
           </main>
         </div>
       </div>
@@ -197,20 +194,24 @@ export function DeviceSettingsDialog({ vm, onClose, onSaved }: DeviceSettingsDia
 type SelectRowProps = {
   icon: string
   label: string
+  description?: string
   value: string
   options: Array<[string, string]>
   onChange: (value: string) => void
 }
 
-function SelectRow({ icon, label, value, options, onChange }: SelectRowProps) {
+function SelectRow({ icon, label, description, value, options, onChange }: SelectRowProps) {
   return (
-    <label className="flex min-h-[102px] items-center rounded-md bg-white/10 px-8">
-      <span className="mr-7 w-12 text-2xl">{icon}</span>
-      <span className="text-xl">{label}</span>
+    <label className="flex min-h-[68px] items-center rounded-[4px] bg-white/10 px-5">
+      <span className="mr-5 w-7 text-xl">{icon}</span>
+      <span className="min-w-0">
+        <span className="block text-[16px] font-semibold">{label}</span>
+        {description && <span className="mt-1 block truncate text-xs text-[#909090]">{description}</span>}
+      </span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="ml-auto h-12 min-w-[180px] rounded border border-white/15 bg-[#3a3a3a] px-4 text-xl text-white outline-none"
+        className="ml-auto h-9 min-w-[118px] rounded-[3px] border border-white/15 bg-[#3a3a3a] px-3 text-[15px] text-white outline-none"
       >
         {options.map(([optionValue, optionLabel]) => (
           <option key={optionValue} value={optionValue}>
@@ -218,18 +219,21 @@ function SelectRow({ icon, label, value, options, onChange }: SelectRowProps) {
           </option>
         ))}
       </select>
-      <span className="ml-7 text-2xl text-gray-300">⌄</span>
+      <span className="ml-5 text-xl text-gray-300">⌄</span>
     </label>
   )
 }
 
-function StaticRow({ icon, label, value }: { icon: string; label: string; value: string }) {
+function StaticRow({ icon, label, description, value }: { icon: string; label: string; description?: string; value: string }) {
   return (
-    <div className="flex min-h-[102px] items-center rounded-md bg-white/10 px-8">
-      <span className="mr-7 w-12 text-2xl">{icon}</span>
-      <span className="text-xl">{label}</span>
-      <span className="ml-auto text-xl text-white">{value}</span>
-      <span className="ml-7 text-2xl text-gray-300">⌄</span>
+    <div className="flex min-h-[68px] items-center rounded-[4px] bg-white/10 px-5">
+      <span className="mr-5 w-7 text-xl">{icon}</span>
+      <span className="min-w-0">
+        <span className="block text-[16px] font-semibold">{label}</span>
+        {description && <span className="mt-1 block truncate text-xs text-[#909090]">{description}</span>}
+      </span>
+      <span className="ml-auto text-[16px] text-white">{value}</span>
+      <span className="ml-5 text-xl text-gray-300">⌄</span>
     </div>
   )
 }
@@ -237,6 +241,7 @@ function StaticRow({ icon, label, value }: { icon: string; label: string; value:
 function ToggleRow({
   icon,
   label,
+  description,
   enabled,
   onChange,
   enabledLabel,
@@ -244,22 +249,26 @@ function ToggleRow({
 }: {
   icon: string
   label: string
+  description?: string
   enabled: boolean
   onChange: (enabled: boolean) => void
   enabledLabel: string
   disabledLabel: string
 }) {
   return (
-    <div className="flex min-h-[102px] items-center rounded-md bg-white/10 px-8">
-      <span className="mr-7 w-12 text-2xl">{icon}</span>
-      <span className="text-xl">{label}</span>
-      <span className="ml-auto mr-5 text-xl">{enabled ? enabledLabel : disabledLabel}</span>
+    <div className="flex min-h-[68px] items-center rounded-[4px] bg-white/10 px-5">
+      <span className="mr-5 w-7 text-xl">{icon}</span>
+      <span className="min-w-0">
+        <span className="block text-[16px] font-semibold">{label}</span>
+        {description && <span className="mt-1 block truncate text-xs text-[#909090]">{description}</span>}
+      </span>
+      <span className="ml-auto mr-3 text-[16px]">{enabled ? enabledLabel : disabledLabel}</span>
       <button
         type="button"
         onClick={() => onChange(!enabled)}
-        className={`relative h-8 w-16 rounded-full transition-colors ${enabled ? 'bg-sky-500' : 'bg-white/20'}`}
+        className={`relative h-6 w-12 rounded-full transition-colors ${enabled ? 'bg-sky-500' : 'bg-white/20'}`}
       >
-        <span className={`absolute top-1 h-6 w-6 rounded-full bg-[#3a3a3a] transition-transform ${enabled ? 'translate-x-8' : 'translate-x-1'}`} />
+        <span className={`absolute top-1 h-4 w-4 rounded-full bg-[#3a3a3a] transition-transform ${enabled ? 'translate-x-7' : 'translate-x-1'}`} />
       </button>
     </div>
   )

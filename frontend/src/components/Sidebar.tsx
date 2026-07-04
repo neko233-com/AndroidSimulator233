@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useI18n } from '../lib/i18n'
 import type { VMInfo } from '../lib/types'
 
@@ -12,12 +13,7 @@ interface SidebarProps {
 
 const NAV_ITEMS = [
 	{ id: 'vms', labelKey: 'devices', icon: '▣' },
-	{ id: 'display', labelKey: 'display', icon: '▤' },
-	{ id: 'files', labelKey: 'fileManager', icon: '□' },
-	{ id: 'shell', labelKey: 'shell', icon: '>' },
-	{ id: 'logs', labelKey: 'logs', icon: '≡' },
-	{ id: 'keymap', labelKey: 'keyMapping', icon: '⌘' },
-	{ id: 'settings', labelKey: 'settings', icon: '⚙' },
+	{ id: 'display', labelKey: 'remoteControlShort', icon: '▭' },
 ]
 
 export function Sidebar({
@@ -29,30 +25,74 @@ export function Sidebar({
 	onSelectVM: _onSelectVM,
 }: SidebarProps) {
 	const { t } = useI18n()
+	const [debugOpen, setDebugOpen] = useState(false)
+	const debugItems = [
+		{ id: 'files', label: t('fileTransfer'), icon: '↔' },
+		{ id: 'shell', label: t('adb'), icon: 'ADB' },
+		{ id: 'logs', label: t('appLogs'), icon: '▤' },
+		{ id: 'settings', label: t('deviceSettings'), icon: '▣' },
+	]
 
 	if (!open) return null
 
 	return (
-		<aside className="flex w-[110px] flex-col border-r border-black/40 bg-[#202020]">
-			<nav className="flex-1 space-y-5 px-3 pt-12">
+		<aside className="flex w-[74px] flex-none flex-col border-r border-[#111] bg-[#202020]">
+			<nav className="flex-1 space-y-3 px-2 pt-8">
 				{NAV_ITEMS.map((item) => (
 					<button
 						key={item.id}
 						onClick={() => onViewChange(item.id)}
-						className={`flex h-[78px] w-full flex-col items-center justify-center gap-2 rounded-md text-base transition-colors ${
+						className={`relative flex h-[72px] w-full flex-col items-center justify-center gap-2 rounded-[4px] text-xs font-semibold transition-all ${
 							activeView === item.id
-								? 'bg-white/15 text-white'
-								: 'text-gray-300 hover:bg-white/10 hover:text-white'
+								? 'bg-[#3a3a3a] text-white'
+								: 'text-[#d7d7d7] hover:bg-[#303030] hover:text-white'
 						}`}
 					>
-						<span className="text-3xl leading-none">{item.icon}</span>
+						<span className="text-[24px] leading-none text-white">{item.icon}</span>
 						<span>{t(item.labelKey)}</span>
 					</button>
 				))}
 			</nav>
 
-			<div className="border-t border-white/10 p-4 text-center text-xs text-gray-500">
-				v0.1.0
+			<div className="relative p-3 text-center">
+				{debugOpen && (
+					<div className="absolute bottom-[76px] left-[70px] z-30 w-[188px] rounded-[4px] border border-[#464646] bg-[#303030] p-2 text-left shadow-2xl">
+						<div className="px-3 py-2 text-xs font-semibold text-[#8f8f8f]">{t('developerDebug')}</div>
+						{debugItems.map((item) => (
+							<button
+								key={item.id}
+								onClick={() => {
+									onViewChange(item.id)
+									setDebugOpen(false)
+								}}
+								className={`flex h-10 w-full items-center gap-3 rounded-[4px] px-3 text-sm font-semibold ${
+									activeView === item.id ? 'bg-[#123d4d] text-[#12baf7]' : 'text-white hover:bg-white/10'
+								}`}
+							>
+								<span className="grid w-8 place-items-center text-xs font-bold">{item.icon}</span>
+								<span className="truncate">{item.label}</span>
+							</button>
+						))}
+					</div>
+				)}
+				<button
+					onClick={() => setDebugOpen((open) => !open)}
+					className={`mb-2 flex h-[54px] w-full flex-col items-center justify-center gap-1 rounded-[4px] text-xs font-semibold ${
+						['files', 'shell', 'logs', 'settings'].includes(activeView)
+							? 'bg-[#3a3a3a] text-white'
+							: 'text-[#d7d7d7] hover:bg-[#303030]'
+					}`}
+				>
+					<span className="text-xl">▥</span>
+					<span>{t('debug')}</span>
+				</button>
+				<button
+					onClick={() => onViewChange('logs')}
+					className="flex h-[54px] w-full flex-col items-center justify-center gap-1 rounded-[4px] text-xs font-semibold text-[#d7d7d7] hover:bg-[#303030]"
+				>
+					<span className="text-xl">▢</span>
+					<span>{t('feedback')}</span>
+				</button>
 			</div>
 		</aside>
 	)

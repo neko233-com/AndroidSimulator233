@@ -17,6 +17,7 @@ Desktop.ini
 # Logs
 *.log
 logs/
+*.trace
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -52,6 +53,11 @@ bin/
 vms/
 images/
 /qemu/
+data/
+shared/
+captures/
+screenshots/
+records/
 *.qcow2
 *.img
 *.iso
@@ -59,9 +65,17 @@ images/
 *.apks
 *.xapk
 *.obb
+*.mp4
+*.webm
+*.mkv
 *.snapshot
 *.pid
 *.sock
+*.tmp
+*.temp
+*.db
+*.sqlite
+*.sqlite3
 
 # Generated docs
 docs/compose/

@@ -57,6 +57,8 @@ declare global {
     CreateVM?: GoBridgeAPI['CreateVM']
     CreateVMWithConfig?: GoBridgeAPI['CreateVMWithConfig']
     UpdateVMConfig?: GoBridgeAPI['UpdateVMConfig']
+    RenameVM?: GoBridgeAPI['RenameVM']
+    CloneVM?: GoBridgeAPI['CloneVM']
     DeleteVM?: GoBridgeAPI['DeleteVM']
     StartVM?: GoBridgeAPI['StartVM']
     StopVM?: GoBridgeAPI['StopVM']
@@ -80,6 +82,8 @@ export interface GoBridgeAPI {
       CreateVM(name: string, android: string): Promise<VMInfo>
       CreateVMWithConfig(name: string, android: string, cpus: number, ram: string, resolution: string, dpi: number, performance: string, renderer: string, maxFps: number, root: boolean, phoneBrand: string, phoneModel: string): Promise<VMInfo>
       UpdateVMConfig(name: string, android: string, cpus: number, ram: string, resolution: string, dpi: number, performance: string, renderer: string, maxFps: number, root: boolean, phoneBrand: string, phoneModel: string): Promise<VMInfo>
+      RenameVM(oldName: string, newName: string): Promise<VMInfo>
+      CloneVM(sourceName: string, newName: string): Promise<VMInfo>
       DeleteVM(name: string): Promise<void>
       StartVM(name: string): Promise<void>
       StopVM(name: string): Promise<void>
@@ -189,6 +193,8 @@ export const GoBridge: GoBridgeAPI = {
   CreateVM: (...args) => callMethod('CreateVM', ...args),
   CreateVMWithConfig: (...args) => callMethod('CreateVMWithConfig', ...args),
   UpdateVMConfig: (...args) => callMethod('UpdateVMConfig', ...args),
+  RenameVM: (...args) => callMethod('RenameVM', ...args),
+  CloneVM: (...args) => callMethod('CloneVM', ...args),
   DeleteVM: (...args) => callMethod('DeleteVM', ...args),
   StartVM: (...args) => callMethod('StartVM', ...args),
   StopVM: (...args) => callMethod('StopVM', ...args),

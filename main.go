@@ -26,13 +26,14 @@ func main() {
 		defer logFile.Close()
 	}
 
+	appService := &App{}
 	app := application.New(application.Options{
 		Name:        "AndroidSimulator233",
 		Description: "Open-source Android Simulator",
 		Logger:      slog.New(slog.NewTextHandler(logFile, &slog.HandlerOptions{Level: slog.LevelInfo})),
 		LogLevel:    slog.LevelInfo,
 		Services: []application.Service{
-			application.NewService(&App{}),
+			application.NewService(appService),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
@@ -41,6 +42,7 @@ func main() {
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	})
+	appService.setDesktopApp(app)
 
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:            "AndroidSimulator233",

@@ -24,23 +24,22 @@ export function Layout({
 	const [sidebarOpen, setSidebarOpen] = useState(true)
 
 	return (
-		<div className="flex h-screen bg-gray-900 text-white">
-			<Sidebar
-				open={sidebarOpen}
-				activeView={activeView}
-				onViewChange={onViewChange}
-				vms={vms}
+		<div className="flex h-screen flex-col overflow-hidden bg-[#2b2b2b] text-white">
+			<Header
+				onMenuClick={() => setSidebarOpen(!sidebarOpen)}
 				selectedVM={selectedVM}
-				onSelectVM={onSelectVM}
+				vms={vms}
 			/>
-
-			<div className="flex-1 flex flex-col overflow-hidden">
-				<Header
-					onMenuClick={() => setSidebarOpen(!sidebarOpen)}
-					selectedVM={selectedVM}
+			<div className="flex min-h-0 flex-1 overflow-hidden">
+				<Sidebar
+					open={sidebarOpen}
+					activeView={activeView}
+					onViewChange={onViewChange}
 					vms={vms}
+					selectedVM={selectedVM}
+					onSelectVM={onSelectVM}
 				/>
-				<main className="flex-1 overflow-auto">{children}</main>
+				<main className="min-h-0 flex-1 overflow-auto bg-[#2f2f2f]">{children}</main>
 			</div>
 		</div>
 	)

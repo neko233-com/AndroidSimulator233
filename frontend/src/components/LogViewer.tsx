@@ -91,19 +91,18 @@ export function LogViewer({ deviceId }: LogViewerProps) {
 	}
 
 	return (
-		<div className="flex flex-col h-full bg-gray-900">
-			{/* Filters */}
-			<div className="flex items-center gap-2 p-2 bg-gray-800 border-b border-gray-700">
-				<div className="flex overflow-hidden rounded bg-gray-700 p-0.5 text-sm">
+		<div className="flex h-full flex-col bg-[#202020] text-white">
+			<div className="flex min-h-[56px] items-center gap-2 border-b border-[#151515] bg-[#2f2f2f] px-4">
+				<div className="flex h-9 overflow-hidden rounded-[4px] bg-[#444] p-0.5 text-sm font-semibold">
 					<button
 						onClick={() => setMode('app')}
-						className={`px-3 py-1 ${mode === 'app' ? 'rounded bg-blue-600 text-white' : 'text-gray-300'}`}
+						className={`px-4 ${mode === 'app' ? 'rounded-[3px] bg-[#12baf7] text-[#10212b]' : 'text-[#d9d9d9] hover:bg-white/8'}`}
 					>
 						{t('appLogs')}
 					</button>
 					<button
 						onClick={() => setMode('android')}
-						className={`px-3 py-1 ${mode === 'android' ? 'rounded bg-blue-600 text-white' : 'text-gray-300'}`}
+						className={`px-4 ${mode === 'android' ? 'rounded-[3px] bg-[#12baf7] text-[#10212b]' : 'text-[#d9d9d9] hover:bg-white/8'}`}
 					>
 						{t('androidLogs')}
 					</button>
@@ -115,12 +114,12 @@ export function LogViewer({ deviceId }: LogViewerProps) {
 							value={filter}
 							onChange={(e) => setFilter(e.target.value)}
 							placeholder={t('filterByTag')}
-							className="px-2 py-1 text-sm bg-gray-700 rounded text-white w-40"
+							className="h-9 w-40 rounded-[4px] border border-[#4a4a4a] bg-[#252525] px-3 text-sm text-white outline-none focus:border-[#12baf7]"
 						/>
 						<select
 							value={level}
 							onChange={(e) => setLevel(e.target.value)}
-							className="px-2 py-1 text-sm bg-gray-700 rounded text-white"
+							className="h-9 rounded-[4px] border border-[#4a4a4a] bg-[#252525] px-3 text-sm text-white outline-none"
 						>
 							<option value="V">Verbose</option>
 							<option value="D">Debug</option>
@@ -136,55 +135,55 @@ export function LogViewer({ deviceId }: LogViewerProps) {
 					value={search}
 					onChange={(e) => setSearch(e.target.value)}
 					placeholder={t('searchLogs')}
-					className="px-2 py-1 text-sm bg-gray-700 rounded text-white flex-1"
+					className="h-9 min-w-[180px] flex-1 rounded-[4px] border border-[#4a4a4a] bg-[#252525] px-3 text-sm text-white outline-none placeholder:text-[#777] focus:border-[#12baf7]"
 				/>
-				<label className="flex items-center gap-1 text-sm text-gray-400">
+				<label className="flex h-9 items-center gap-2 rounded-[4px] bg-[#3b3b3b] px-3 text-sm font-medium text-[#d0d0d0]">
 					<input
 						type="checkbox"
 						checked={autoScroll}
 						onChange={(e) => setAutoScroll(e.target.checked)}
+						className="accent-[#12baf7]"
 					/>
 					{t('autoScroll')}
 				</label>
 				<button
 					onClick={handleExport}
-					className="px-2 py-1 text-sm bg-gray-600 rounded hover:bg-gray-500"
+					className="h-9 rounded-[4px] bg-[#454545] px-4 text-sm font-semibold hover:bg-[#555]"
 				>
 					{t('export')}
 				</button>
 				<button
 					onClick={loadLogs}
-					className="px-2 py-1 text-sm bg-blue-600 rounded hover:bg-blue-500"
+					className="h-9 rounded-[4px] bg-[#12baf7] px-4 text-sm font-bold text-[#10212b] hover:bg-[#19c7ff]"
 				>
 					{t('refresh')}
 				</button>
 			</div>
 
-			{/* Log entries */}
-			<div className="flex-1 overflow-auto font-mono text-xs">
+			<div className="min-h-0 flex-1 overflow-auto bg-[#171717] font-mono text-xs">
 				{mode === 'app' && (
-					<div className="border-b border-gray-800 bg-gray-950 p-2 text-gray-300">
-						<div className="mb-2 text-gray-500">{t('logPath')}: {appLogPath || '-'}</div>
-						<pre className="whitespace-pre-wrap break-all">{filteredAppLogs || t('noLogs')}</pre>
+					<div className="min-h-full border-b border-[#282828] bg-[#171717] p-4 text-[#d2d2d2]">
+						<div className="mb-3 rounded-[4px] border border-[#383838] bg-[#222] px-3 py-2 text-[#8f8f8f]">{t('logPath')}: {appLogPath || '-'}</div>
+						<pre className="whitespace-pre-wrap break-all leading-5">{filteredAppLogs || t('noLogs')}</pre>
 						<div ref={bottomRef} />
 					</div>
 				)}
 				{mode === 'android' && filteredLogs.map((log, i) => (
-					<div key={i} className="flex border-b border-gray-800 hover:bg-gray-800/50">
+					<div key={i} className="flex min-h-8 items-start border-b border-[#282828] px-2 py-1 hover:bg-[#242424]">
 						<span className={`w-6 text-center font-bold ${LEVEL_COLORS[log.level] || 'text-gray-400'}`}>
 							{log.level}
 						</span>
-						<span className="w-24 text-gray-500 truncate" title={log.tag}>
+						<span className="w-28 truncate text-[#777]" title={log.tag}>
 							{log.tag}
 						</span>
-						<span className="w-16 text-gray-600 text-right pr-2" title={`PID: ${log.pid}`}>
+						<span className="w-16 pr-2 text-right text-[#666]" title={`PID: ${log.pid}`}>
 							{log.pid}
 						</span>
-						<span className="flex-1 text-gray-300 break-all">{log.message}</span>
+						<span className="flex-1 break-all text-[#d2d2d2]">{log.message}</span>
 					</div>
 				))}
 				{mode === 'android' && filteredLogs.length === 0 && (
-					<div className="p-4 text-center text-gray-500">{t('noLogs')}</div>
+					<div className="p-10 text-center text-[#777]">{t('noLogs')}</div>
 				)}
 				{mode === 'android' && <div ref={bottomRef} />}
 			</div>

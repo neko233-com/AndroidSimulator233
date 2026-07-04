@@ -219,7 +219,9 @@ func (i *QEMUInstance) startAndroidSDKEmulator() error {
 		"-memory", ramToMB(i.Config.RAM),
 		"-cores", strconv.Itoa(maxInt(i.Config.CPUs, 1)),
 		"-skin", width + "x" + height,
-		"-no-snapshot-load",
+		"-no-boot-anim",
+		"-no-window",
+		"-no-audio",
 	}
 	if i.Config.ADBPort > 0 {
 		consolePort := i.Config.ADBPort - 1
@@ -279,7 +281,11 @@ func (i *QEMUInstance) Stop() error {
 	defer i.mu.Unlock()
 
 	if i.Process == nil || i.Status == "stopped" {
-		return fmt.Errorf("instance %s not running", i.ID)
+		i.Status = "stopped"
+		return nil
+	}
+	if i.Status == "stopping" {
+		return nil
 	}
 
 	i.Status = "stopping"

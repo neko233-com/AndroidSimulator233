@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sync"
 
 	"github.com/neko233/AndroidSimulator233/internal/adb"
@@ -24,10 +26,17 @@ type App struct {
 	logAPI     *api.LogAPI
 	imageMgr   *vm.ImageManager
 	downloader *vm.ImageDownloader
+	desktopApp *application.App
 }
 
 func NewApp() *App {
 	return &App{}
+}
+
+func (a *App) setDesktopApp(app *application.App) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.desktopApp = app
 }
 
 func (a *App) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
@@ -129,7 +138,7 @@ func (a *App) CreateVMWithConfig(name, android string, cpus int, ram, resolution
 		Resolution:  resolution,
 		DPI:         dpi,
 		Performance: performance,
-		Renderer:    renderer,
+		Renderer:    "vulkan",
 		MaxFPS:      maxFPS,
 		Root:        root,
 		PhoneBrand:  phoneBrand,
@@ -148,7 +157,7 @@ func (a *App) UpdateVMConfig(name, android string, cpus int, ram, resolution str
 		Resolution:  resolution,
 		DPI:         dpi,
 		Performance: performance,
-		Renderer:    renderer,
+		Renderer:    "vulkan",
 		MaxFPS:      maxFPS,
 		Root:        root,
 		PhoneBrand:  phoneBrand,
@@ -163,10 +172,25 @@ func (a *App) DeleteVM(name string) error {
 	return a.vmAPI.DeleteVM(name)
 }
 
+func (a *App) RenameVM(oldName, newName string) (*api.VMInfo, error) {
+	if err := a.ensureReady(); err != nil {
+		return nil, err
+	}
+	return a.vmAPI.RenameVM(oldName, newName)
+}
+
+func (a *App) CloneVM(sourceName, newName string) (*api.VMInfo, error) {
+	if err := a.ensureReady(); err != nil {
+		return nil, err
+	}
+	return a.vmAPI.CloneVM(sourceName, newName)
+}
+
 func (a *App) StartVM(name string) error {
 	if err := a.ensureReady(); err != nil {
 		return err
 	}
+	a.openDeviceWindow(name)
 	return a.vmAPI.StartVM(name)
 }
 
@@ -302,4 +326,36 @@ func (a *App) GetAppLogs(maxBytes int) (string, error) {
 		return "", err
 	}
 	return string(data), nil
+}
+
+var windowNamePattern = regexp.MustCompile(`[^A-Za-z0-9_.-]+`)
+
+func (a *App) openDeviceWindow(name string) {
+	a.mu.Lock()
+	app := a.desktopApp
+	a.mu.Unlock()
+	if app == nil {
+		return
+	}
+
+	windowName := "device-" + windowNamePattern.ReplaceAllString(name, "_")
+	windowURL := "/?device=" + url.QueryEscape(name)
+	if existing, ok := app.Window.GetByName(windowName); ok {
+		existing.SetURL(windowURL)
+		existing.Show()
+		existing.Focus()
+		return
+	}
+
+	app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Name:             windowName,
+		Title:            name,
+		Width:            1280,
+		Height:           780,
+		MinWidth:         960,
+		MinHeight:        600,
+		InitialPosition:  application.WindowCentered,
+		BackgroundColour: application.NewRGB(18, 18, 18),
+		URL:              windowURL,
+	})
 }

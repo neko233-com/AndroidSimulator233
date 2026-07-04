@@ -2,6 +2,7 @@ package vm
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -113,14 +114,14 @@ func (m *VMManager) CreateWithOptions(options CreateOptions) (*VMConfig, error) 
 	}
 	cpus := options.CPUs
 	if cpus <= 0 {
-		cpus = 2
+		cpus = 6
 	}
 	if cpus > 16 {
 		cpus = 16
 	}
 	ram := options.RAM
 	if ram == "" {
-		ram = "2G"
+		ram = "12G"
 	}
 	resolution := options.Resolution
 	if resolution == "" {
@@ -132,15 +133,12 @@ func (m *VMManager) CreateWithOptions(options CreateOptions) (*VMConfig, error) 
 	}
 	performance := options.Performance
 	if performance == "" {
-		performance = "middle"
+		performance = "high"
 	}
-	renderer := options.Renderer
-	if renderer == "" {
-		renderer = "vulkan"
-	}
+	renderer := "vulkan"
 	maxFPS := options.MaxFPS
 	if maxFPS <= 0 {
-		maxFPS = 60
+		maxFPS = 120
 	}
 	phoneBrand := options.PhoneBrand
 	if phoneBrand == "" {
@@ -214,9 +212,7 @@ func (m *VMManager) UpdateWithOptions(name string, options CreateOptions) (*VMCo
 	if options.Performance != "" {
 		config.Performance = options.Performance
 	}
-	if options.Renderer != "" {
-		config.Renderer = options.Renderer
-	}
+	config.Renderer = "vulkan"
 	if options.MaxFPS > 0 {
 		config.MaxFPS = options.MaxFPS
 	}
@@ -285,6 +281,118 @@ func (m *VMManager) Delete(name string) error {
 	return nil
 }
 
+func (m *VMManager) Rename(oldName, newName string) (*VMConfig, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	oldName, err := normalizeName(oldName)
+	if err != nil {
+		return nil, err
+	}
+	newName, err = normalizeName(newName)
+	if err != nil {
+		return nil, err
+	}
+	if oldName == newName {
+		config, ok := m.vms[oldName+".json"]
+		if !ok {
+			return nil, fmt.Errorf("VM %s not found", oldName)
+		}
+		return config, nil
+	}
+	if _, exists := m.vms[newName+".json"]; exists {
+		return nil, fmt.Errorf("VM %s already exists", newName)
+	}
+	if inst, ok := m.qemu.Get(oldName); ok && inst.IsRunning() {
+		return nil, fmt.Errorf("stop VM %s before renaming", oldName)
+	}
+
+	config, ok := m.vms[oldName+".json"]
+	if !ok {
+		return nil, fmt.Errorf("VM %s not found", oldName)
+	}
+
+	oldConfigPath := filepath.Join(m.dataDir, oldName+".json")
+	newConfigPath := filepath.Join(m.dataDir, newName+".json")
+	oldDisk := config.Disk
+	newDisk := filepath.Join(m.dataDir, newName+".qcow2")
+
+	if oldDisk != "" {
+		if _, err := os.Stat(oldDisk); err == nil {
+			if err := os.Rename(oldDisk, newDisk); err != nil {
+				return nil, fmt.Errorf("rename disk: %w", err)
+			}
+			config.Disk = newDisk
+		}
+	}
+
+	config.Name = newName
+	config.Renderer = "vulkan"
+	if err := config.Save(newConfigPath); err != nil {
+		if config.Disk == newDisk && oldDisk != "" {
+			_ = os.Rename(newDisk, oldDisk)
+			config.Disk = oldDisk
+		}
+		config.Name = oldName
+		return nil, err
+	}
+	if err := os.Remove(oldConfigPath); err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+	delete(m.vms, oldName+".json")
+	m.vms[newName+".json"] = config
+	return config, nil
+}
+
+func (m *VMManager) Clone(sourceName, newName string) (*VMConfig, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	sourceName, err := normalizeName(sourceName)
+	if err != nil {
+		return nil, err
+	}
+	newName, err = normalizeName(newName)
+	if err != nil {
+		return nil, err
+	}
+	if _, exists := m.vms[newName+".json"]; exists {
+		return nil, fmt.Errorf("VM %s already exists", newName)
+	}
+	source, ok := m.vms[sourceName+".json"]
+	if !ok {
+		return nil, fmt.Errorf("VM %s not found", sourceName)
+	}
+
+	clone := *source
+	clone.Name = newName
+	clone.Renderer = "vulkan"
+	clone.FirstBoot = source.FirstBoot
+	clone.SetupStatus = source.SetupStatus
+	_, vncPort, adbPort := m.allocatePorts()
+	clone.ADBPort = adbPort
+	clone.VNCPort = vncPort
+	clone.Disk = filepath.Join(m.dataDir, newName+".qcow2")
+
+	if source.Disk != "" {
+		if _, err := os.Stat(source.Disk); err == nil {
+			if err := copyFile(source.Disk, clone.Disk); err != nil {
+				return nil, fmt.Errorf("copy disk: %w", err)
+			}
+		}
+	}
+
+	path := filepath.Join(m.dataDir, newName+".json")
+	if err := clone.Save(path); err != nil {
+		if clone.Disk != "" {
+			_ = os.Remove(clone.Disk)
+		}
+		return nil, err
+	}
+	m.vms[newName+".json"] = &clone
+	return &clone, nil
+}
+
 func (m *VMManager) StartVM(name string, config *VMConfig) error {
 	m.normalizeLoadedConfig(config)
 
@@ -313,7 +421,25 @@ func (m *VMManager) StartVM(name string, config *VMConfig) error {
 	if _, err := os.Stat(config.Disk); err != nil {
 		useSDKEmulator = true
 	}
-	m.appendRuntimeLog("starting %s cpus=%d ram=%s resolution=%s adb=%d sdk=%t", name, config.CPUs, config.RAM, config.Resolution, config.ADBPort, useSDKEmulator)
+	config.Renderer = "vulkan"
+	if config.Performance == "" {
+		config.Performance = "high"
+	}
+	if config.MaxFPS <= 0 {
+		config.MaxFPS = 120
+	}
+	m.appendRuntimeLog(
+		"starting %s renderer=%s performance=%s cpus=%d ram=%s maxFPS=%d resolution=%s adb=%d sdk=%t",
+		name,
+		config.Renderer,
+		config.Performance,
+		config.CPUs,
+		config.RAM,
+		config.MaxFPS,
+		config.Resolution,
+		config.ADBPort,
+		useSDKEmulator,
+	)
 
 	// Create QEMU config
 	qemuConfig := &qemu.QEMUConfig{
@@ -323,6 +449,9 @@ func (m *VMManager) StartVM(name string, config *VMConfig) error {
 		Disk:           config.Disk,
 		Display:        config.Display,
 		Resolution:     config.Resolution,
+		Renderer:       config.Renderer,
+		Performance:    config.Performance,
+		MaxFPS:         config.MaxFPS,
 		GPU:            config.GPU,
 		Network:        config.Network,
 		ADBPort:        config.ADBPort,
@@ -352,7 +481,8 @@ func (m *VMManager) StopVM(name string) error {
 	if ok {
 		return inst.Stop()
 	}
-	return fmt.Errorf("VM %s not running", name)
+	m.appendRuntimeLog("stop skipped %s: already stopped", name)
+	return nil
 }
 
 func (m *VMManager) ResetVM(name string) error {
@@ -402,7 +532,7 @@ func (m *VMManager) allocatePorts() (vncDisplay int, vncPort int, adbPort int) {
 	return vncPort - 5700, vncPort, adbPort
 }
 
-var vmNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._ -]{0,63}$`)
+var vmNamePattern = regexp.MustCompile(`^[\p{L}\p{N}][\p{L}\p{N}._ -]{0,63}$`)
 
 func normalizeName(name string) (string, error) {
 	if !vmNamePattern.MatchString(name) {
@@ -446,4 +576,23 @@ func (m *VMManager) appendRuntimeLog(format string, args ...interface{}) {
 	defer file.Close()
 	line := fmt.Sprintf(format, args...)
 	_, _ = fmt.Fprintf(file, "%s %s\n", time.Now().Format(time.RFC3339), line)
+}
+
+func copyFile(sourcePath, targetPath string) error {
+	source, err := os.Open(sourcePath)
+	if err != nil {
+		return err
+	}
+	defer source.Close()
+
+	target, err := os.OpenFile(targetPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer target.Close()
+
+	if _, err := io.Copy(target, source); err != nil {
+		return err
+	}
+	return target.Sync()
 }

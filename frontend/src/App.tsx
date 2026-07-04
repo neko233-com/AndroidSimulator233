@@ -5,6 +5,7 @@ import { KeyMapping } from './components/KeyMapping'
 import { Layout } from './components/Layout'
 import { LogViewer } from './components/LogViewer'
 import { Terminal } from './components/Terminal'
+import { DeviceWindow } from './components/DeviceWindow'
 import { VMList } from './components/VMList'
 import { I18nProvider, useI18n } from './lib/i18n'
 import type { VMInfo } from './lib/types'
@@ -13,9 +14,11 @@ import { GoBridge, formatNativeError } from './lib/types'
 type View = 'display' | 'vms' | 'files' | 'shell' | 'logs' | 'keymap' | 'settings'
 
 function App() {
+	const deviceName = new URLSearchParams(window.location.search).get('device')
+
 	return (
 		<I18nProvider>
-			<AppShell />
+			{deviceName ? <DeviceWindow deviceName={deviceName} /> : <AppShell />}
 		</I18nProvider>
 	)
 }
@@ -103,17 +106,18 @@ function AppShell() {
 			case 'display':
 				return (
 					<div className="flex h-full flex-col">
-						<div className="flex items-center gap-2 border-b border-gray-700 bg-gray-800 px-3 py-2">
-							<div className="mr-auto text-sm text-gray-400">
+						<div className="flex min-h-[52px] items-center gap-2 border-b border-[#151515] bg-[#2f2f2f] px-4">
+							<div className="mr-3 grid h-8 w-8 place-items-center rounded-[4px] bg-[#123d4d] text-[#12baf7]">ADB</div>
+							<div className="mr-auto text-sm font-medium text-[#cfcfcf]">
 								{selectedVM.status ?? 'stopped'} · {t('adb')} {selectedVM.adbPort ?? '-'} · {t('vnc')} {selectedVM.vncPort ?? '-'}
 							</div>
-							<button onClick={refreshVMs} className="rounded bg-gray-700 px-3 py-1 text-sm hover:bg-gray-600">
+							<button onClick={refreshVMs} className="h-9 rounded-[4px] bg-[#454545] px-4 text-sm font-semibold hover:bg-[#555]">
 								{t('refresh')}
 							</button>
-							<button onClick={resetVM} className="rounded bg-gray-700 px-3 py-1 text-sm hover:bg-gray-600">
+							<button onClick={resetVM} className="h-9 rounded-[4px] bg-[#454545] px-4 text-sm font-semibold hover:bg-[#555]">
 								{t('reset')}
 							</button>
-							<button onClick={stopVM} className="rounded bg-red-700 px-3 py-1 text-sm hover:bg-red-600">
+							<button onClick={stopVM} className="h-9 rounded-[4px] bg-[#5a2f2f] px-4 text-sm font-semibold text-[#ffb0b0] hover:bg-[#6c3939]">
 								{t('stop')}
 							</button>
 						</div>
@@ -158,7 +162,7 @@ function SettingsPanel({ vm }: { vm: VMInfo }) {
 		t('other'),
 	]
 	const rows = [
-		{ icon: '▣', label: t('renderer'), value: (vm.renderer ?? 'vulkan') === 'directx' ? 'DirectX' : 'Vulkan' },
+		{ icon: '▣', label: t('renderer'), value: 'Vulkan' },
 		{ icon: '▤', label: t('performance'), value: vm.performance ?? 'middle' },
 		{ icon: '▥', label: t('memory'), value: `${vm.cpus} ${t('cores')} · ${vm.ram}` },
 		{ icon: '▧', label: t('resolution'), value: `${vm.resolution ?? '1280x720'} · ${vm.dpi ?? 240} DPI` },

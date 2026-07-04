@@ -166,6 +166,22 @@ func (a *VMAPI) DeleteVM(name string) error {
 	return a.manager.Delete(name)
 }
 
+func (a *VMAPI) RenameVM(oldName, newName string) (*VMInfo, error) {
+	config, err := a.manager.Rename(oldName, newName)
+	if err != nil {
+		return nil, err
+	}
+	return a.configToInfo(config), nil
+}
+
+func (a *VMAPI) CloneVM(sourceName, newName string) (*VMInfo, error) {
+	config, err := a.manager.Clone(sourceName, newName)
+	if err != nil {
+		return nil, err
+	}
+	return a.configToInfo(config), nil
+}
+
 func (a *VMAPI) StartVM(name string) error {
 	vmConfig, ok := a.manager.Get(name)
 	if !ok {
@@ -205,4 +221,24 @@ func (a *VMAPI) GetAvailableImages() []ImageInfo {
 		}
 	}
 	return result
+}
+
+func (a *VMAPI) configToInfo(config *vm.VMConfig) *VMInfo {
+	return &VMInfo{
+		Name:        config.Name,
+		CPUs:        config.CPUs,
+		RAM:         config.RAM,
+		Android:     config.Android,
+		Resolution:  config.Resolution,
+		DPI:         config.DPI,
+		Performance: config.Performance,
+		Renderer:    config.Renderer,
+		MaxFPS:      config.MaxFPS,
+		Root:        config.Root,
+		PhoneBrand:  config.PhoneBrand,
+		PhoneModel:  config.PhoneModel,
+		Status:      a.manager.Status(config.Name),
+		ADBPort:     config.ADBPort,
+		VNCPort:     config.VNCPort,
+	}
 }
