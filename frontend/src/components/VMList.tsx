@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { VMCard } from './VMCard'
 import { useI18n } from '../lib/i18n'
 import type { VMInfo } from '../lib/types'
-import { GoBridge } from '../lib/types'
+import { GoBridge, formatNativeError } from '../lib/types'
 
 interface VMListProps {
   vms: VMInfo[]
@@ -53,11 +53,6 @@ export function VMList({ vms, loading, onRefresh, onOpen }: VMListProps) {
     }
   }
 
-  const getErrorMessage = (err: unknown) => {
-    if (err instanceof Error) return err.message
-    return String(err)
-  }
-
   const handleCreate = async () => {
     if (!newVMName.trim()) return
 
@@ -88,7 +83,7 @@ export function VMList({ vms, loading, onRefresh, onOpen }: VMListProps) {
       onRefresh()
       onOpen(vm.name)
     } catch (err) {
-      alert(t('createFailed') + getErrorMessage(err))
+      alert(t('createFailed') + formatNativeError(err))
     } finally {
       setCreating(false)
     }
@@ -101,7 +96,7 @@ export function VMList({ vms, loading, onRefresh, onOpen }: VMListProps) {
       await GoBridge.DeleteVM(name)
       onRefresh()
     } catch (err) {
-      alert(t('deleteFailed') + err)
+      alert(t('deleteFailed') + formatNativeError(err))
     }
   }
 
@@ -111,7 +106,7 @@ export function VMList({ vms, loading, onRefresh, onOpen }: VMListProps) {
       onRefresh()
       onOpen(name)
     } catch (err) {
-      alert(t('startFailed') + err)
+      alert(t('startFailed') + formatNativeError(err))
     }
   }
 
@@ -127,24 +122,43 @@ export function VMList({ vms, loading, onRefresh, onOpen }: VMListProps) {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">{t('multiInstanceTitle')}</h2>
-          <p className="mt-1 text-sm text-gray-400">{t('multiInstanceSubtitle')}</p>
-        </div>
+    <div className="min-h-full bg-[#2f2f2f]">
+      <div className="flex h-[108px] items-center gap-6 px-9">
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 hover:bg-blue-500"
+          className="flex h-12 items-center gap-3 rounded-md bg-sky-500 px-6 text-lg font-medium text-[#101010] hover:bg-sky-400"
         >
-          <span>+</span>
+          <span className="text-3xl leading-none">+</span>
           <span>{t('createDevice')}</span>
         </button>
+        <button className="flex h-12 items-center gap-3 rounded-md bg-white/15 px-6 text-lg hover:bg-white/20">
+          <span>▱</span>
+          <span>{t('batchActions')}</span>
+        </button>
+        <button className="flex h-12 items-center gap-3 rounded-md bg-white/15 px-6 text-lg hover:bg-white/20">
+          <span>▣</span>
+          <span>{t('arrangeWindows')}</span>
+        </button>
+        <div className="flex-1" />
+        <button className="grid h-12 w-12 place-items-center rounded-md text-4xl hover:bg-white/10" title={t('search')}>
+          ⌕
+        </button>
+        <button className="grid h-12 w-12 place-items-center rounded-md text-3xl hover:bg-white/10" title={t('sort')}>
+          ≡
+        </button>
+        <div className="flex h-12 overflow-hidden rounded-md border border-white/10 bg-white/10">
+          <button className="grid w-16 place-items-center bg-sky-500 text-2xl text-black" title={t('detailsView')}>
+            ▦
+          </button>
+          <button className="grid w-16 place-items-center text-2xl hover:bg-white/10" title={t('listView')}>
+            ☰
+          </button>
+        </div>
       </div>
 
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="max-h-[calc(100vh-48px)] w-[680px] max-w-[calc(100vw-32px)] overflow-y-auto rounded-lg bg-gray-800 p-6">
+          <div className="max-h-[calc(100vh-48px)] w-[680px] max-w-[calc(100vw-32px)] overflow-y-auto rounded-lg bg-[#2f2f2f] p-6 shadow-2xl">
             <h3 className="mb-4 text-lg font-bold">{t('createNewDevice')}</h3>
 
             <div className="mb-4">
@@ -377,7 +391,7 @@ export function VMList({ vms, loading, onRefresh, onOpen }: VMListProps) {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div>
           {vms.map((vm) => (
             <VMCard
               key={vm.name}
@@ -389,17 +403,6 @@ export function VMList({ vms, loading, onRefresh, onOpen }: VMListProps) {
           ))}
         </div>
       )}
-
-      <div className="mt-8 rounded-lg bg-gray-800 p-4">
-        <h3 className="mb-2 font-bold">{t('preinstalledApps')}</h3>
-        <p className="mb-3 text-sm text-gray-400">{t('preinstalledAppsHint')}</p>
-        <div className="flex flex-wrap gap-2">
-          <span className="rounded-full bg-gray-700 px-3 py-1 text-sm">Chrome</span>
-          <span className="rounded-full bg-gray-700 px-3 py-1 text-sm">TapTap</span>
-          <span className="rounded-full bg-gray-700 px-3 py-1 text-sm">Play Store</span>
-          <span className="rounded-full bg-gray-700 px-3 py-1 text-sm">Play Services</span>
-        </div>
-      </div>
     </div>
   )
 }

@@ -14,6 +14,8 @@ export interface VMInfo {
   status?: string
   adbPort?: number
   vncPort?: number
+  backend?: string
+  hostIndex?: string
 }
 
 export interface VMCreateOptions {
@@ -152,17 +154,33 @@ async function callMethod<K extends keyof GoBridgeAPI>(
   name: K,
   ...args: Parameters<GoBridgeAPI[K]>
 ): Promise<Awaited<ReturnType<GoBridgeAPI[K]>>> {
-  const legacy = getLegacyMethod(name)
-  if (legacy) {
-    return (legacy as (...methodArgs: unknown[]) => Promise<Awaited<ReturnType<GoBridgeAPI[K]>>>)(...args)
-  }
+  try {
+    const legacy = getLegacyMethod(name)
+    if (legacy) {
+      return await (legacy as (...methodArgs: unknown[]) => Promise<Awaited<ReturnType<GoBridgeAPI[K]>>>)(...args)
+    }
 
-  const runtime = await loadWailsRuntime()
-  const methodID = wailsMethodIDs[name]
-  if (!runtime || !methodID) {
-    throw new Error(`Native bridge method ${String(name)} is unavailable`)
+    const runtime = await loadWailsRuntime()
+    const methodID = wailsMethodIDs[name]
+    if (!runtime || !methodID) {
+      throw new Error(`Native bridge method ${String(name)} is unavailable`)
+    }
+    return await runtime.Call.ByID(methodID, ...args) as Awaited<ReturnType<GoBridgeAPI[K]>>
+  } catch (err) {
+    throw new Error(formatNativeError(err))
   }
-  return runtime.Call.ByID(methodID, ...args) as Promise<Awaited<ReturnType<GoBridgeAPI[K]>>>
+}
+
+export function formatNativeError(err: unknown) {
+  const raw = err instanceof Error ? err.message : String(err)
+  const trimmed = raw.replace(/^Error:\s*/, '').trim()
+  try {
+    const parsed = JSON.parse(trimmed) as { message?: string }
+    if (parsed?.message) return parsed.message
+  } catch {
+    // Keep the original message when it is already plain text.
+  }
+  return trimmed
 }
 
 export const GoBridge: GoBridgeAPI = {

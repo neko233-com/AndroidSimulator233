@@ -4,7 +4,7 @@ layout: home
 hero:
   name: AndroidSimulator233
   text: Open-source Android Simulator
-  tagline: A free alternative to MuMu Simulator, supporting Windows and macOS
+  tagline: Desktop Android device management for Windows and macOS
   actions:
     - theme: brand
       text: Get Started

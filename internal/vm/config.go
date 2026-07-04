@@ -22,6 +22,8 @@ type VMConfig struct {
 	Display     string `json:"display,omitempty"`
 	ADBPort     int    `json:"adbPort,omitempty"`
 	VNCPort     int    `json:"vncPort,omitempty"`
+	Backend     string `json:"backend,omitempty"`
+	HostIndex   string `json:"hostIndex,omitempty"`
 	GPU         string `json:"gpu,omitempty"`
 	Network     string `json:"network,omitempty"`
 	FirstBoot   bool   `json:"firstBoot,omitempty"`

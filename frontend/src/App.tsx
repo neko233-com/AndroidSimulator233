@@ -8,7 +8,7 @@ import { Terminal } from './components/Terminal'
 import { VMList } from './components/VMList'
 import { I18nProvider, useI18n } from './lib/i18n'
 import type { VMInfo } from './lib/types'
-import { GoBridge } from './lib/types'
+import { GoBridge, formatNativeError } from './lib/types'
 
 type View = 'display' | 'vms' | 'files' | 'shell' | 'logs' | 'keymap' | 'settings'
 
@@ -64,7 +64,7 @@ function AppShell() {
 			await GoBridge.StopVM(selectedVM.name)
 			await refreshVMs()
 		} catch (err) {
-			alert(t('stopFailed') + err)
+			alert(t('stopFailed') + formatNativeError(err))
 		}
 	}
 
@@ -74,7 +74,7 @@ function AppShell() {
 			await GoBridge.ResetVM(selectedVM.name)
 			await refreshVMs()
 		} catch (err) {
-			alert(t('resetFailed') + err)
+			alert(t('resetFailed') + formatNativeError(err))
 		}
 	}
 
@@ -148,38 +148,54 @@ function AppShell() {
 
 function SettingsPanel({ vm }: { vm: VMInfo }) {
 	const { t } = useI18n()
+	const settingsNav = [
+		t('performance'),
+		t('display'),
+		t('audio'),
+		t('network'),
+		t('phoneModel'),
+		t('developerOptions'),
+		t('other'),
+	]
+	const rows = [
+		{ icon: '▣', label: t('renderer'), value: (vm.renderer ?? 'vulkan') === 'directx' ? 'DirectX' : 'Vulkan' },
+		{ icon: '▤', label: t('performance'), value: vm.performance ?? 'middle' },
+		{ icon: '▥', label: t('memory'), value: `${vm.cpus} ${t('cores')} · ${vm.ram}` },
+		{ icon: '▧', label: t('resolution'), value: `${vm.resolution ?? '1280x720'} · ${vm.dpi ?? 240} DPI` },
+		{ icon: '▦', label: t('frameRate'), value: `${vm.maxFps ?? 60} FPS` },
+		{ icon: '□', label: t('rootPermission'), value: vm.root ? t('enabled') : t('disabled') },
+		{ icon: '◇', label: t('phoneModel'), value: [vm.phoneBrand, vm.phoneModel].filter(Boolean).join(' ') || 'Xiaomi 14 Ultra' },
+	]
 
 	return (
-		<div className="p-6">
-			<h2 className="mb-6 text-2xl font-bold">{t('deviceSettings')}</h2>
-			<div className="max-w-2xl rounded-lg bg-gray-800 p-4">
-				<div className="grid grid-cols-2 gap-4 text-sm">
-					<div className="text-gray-400">{t('name')}</div>
-					<div>{vm.name}</div>
-					<div className="text-gray-400">{t('android')}</div>
-					<div>{vm.android}</div>
-					<div className="text-gray-400">{t('cpu')}</div>
-					<div>{vm.cpus} {t('cores')}</div>
-					<div className="text-gray-400">{t('ram')}</div>
-					<div>{vm.ram}</div>
-					<div className="text-gray-400">{t('resolution')}</div>
-					<div>{vm.resolution ?? '1280x720'}</div>
-					<div className="text-gray-400">{t('dpi')}</div>
-					<div>{vm.dpi ?? 240}</div>
-					<div className="text-gray-400">{t('performance')}</div>
-					<div>{vm.performance ?? 'middle'}</div>
-					<div className="text-gray-400">{t('renderer')}</div>
-					<div>{vm.renderer ?? 'vulkan'}</div>
-					<div className="text-gray-400">{t('frameRate')}</div>
-					<div>{vm.maxFps ?? 60} FPS</div>
-					<div className="text-gray-400">{t('rootPermission')}</div>
-					<div>{vm.root ? t('enabled') : t('disabled')}</div>
-					<div className="text-gray-400">{t('phoneModel')}</div>
-					<div>{[vm.phoneBrand, vm.phoneModel].filter(Boolean).join(' ') || 'Xiaomi 14 Ultra'}</div>
-					<div className="text-gray-400">{t('adbEndpoint')}</div>
-					<div>{vm.adbPort ? `127.0.0.1:${vm.adbPort}` : t('notAssigned')}</div>
-					<div className="text-gray-400">{t('displayEndpoint')}</div>
-					<div>{vm.vncPort ? `ws://127.0.0.1:${vm.vncPort}` : t('notAssigned')}</div>
+		<div className="flex min-h-full bg-[#202020]">
+			<div className="w-[372px] px-6 py-8">
+				<div className="mb-6 text-xl">{t('deviceSettings')}</div>
+				<div className="space-y-3">
+					{settingsNav.map((item, index) => (
+						<button
+							key={item}
+							className={`flex h-[72px] w-full items-center gap-4 rounded-md px-8 text-left text-xl ${
+								index === 0 ? 'border-l-4 border-sky-400 bg-white/10' : 'hover:bg-white/5'
+							}`}
+						>
+							<span className="text-2xl">{index === 0 ? '▣' : '□'}</span>
+							<span>{item}</span>
+						</button>
+					))}
+				</div>
+			</div>
+			<div className="flex-1 px-9 py-20">
+				<h2 className="mb-10 text-[34px] font-medium">{t('performance')}</h2>
+				<div className="max-w-5xl space-y-2">
+					{rows.map((row) => (
+						<div key={row.label} className="flex min-h-[102px] items-center rounded-md bg-white/10 px-8">
+							<span className="mr-7 text-3xl">{row.icon}</span>
+							<div className="text-xl">{row.label}</div>
+							<div className="ml-auto text-right text-xl text-white">{row.value}</div>
+							<span className="ml-8 text-2xl text-gray-300">⌄</span>
+						</div>
+					))}
 				</div>
 			</div>
 		</div>

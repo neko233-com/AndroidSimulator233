@@ -2,12 +2,15 @@ package vm
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"sync"
 
+	"github.com/neko233/AndroidSimulator233/internal/hostcli"
 	"github.com/neko233/AndroidSimulator233/internal/qemu"
 )
 
@@ -15,6 +18,7 @@ type VMManager struct {
 	dataDir string
 	vms     map[string]*VMConfig
 	qemu    *qemu.Manager
+	host    *hostcli.Client
 	mu      sync.RWMutex
 }
 
@@ -40,10 +44,16 @@ func NewVMManager(dataDir string) (*VMManager, error) {
 		return nil, fmt.Errorf("failed to create data dir: %w", err)
 	}
 
+	host, err := hostcli.NewClient()
+	if err != nil {
+		log.Printf("host engine unavailable: %v", err)
+	}
+
 	mgr := &VMManager{
 		dataDir: dataDir,
 		vms:     make(map[string]*VMConfig),
 		qemu:    qemu.NewManager(dataDir),
+		host:    host,
 	}
 
 	if err := mgr.loadAll(); err != nil {
@@ -166,6 +176,8 @@ func (m *VMManager) CreateWithOptions(options CreateOptions) (*VMConfig, error) 
 		Display:     fmt.Sprintf("vnc=:%d,websocket=%d", vncDisplay, vncPort),
 		ADBPort:     adbPort,
 		VNCPort:     vncPort,
+		Backend:     "host",
+		HostIndex:   defaultHostIndex(len(m.vms)),
 		GPU:         "virtio",
 		Network:     "user",
 		FirstBoot:   true,
@@ -259,27 +271,44 @@ func (m *VMManager) StartVM(name string, config *VMConfig) error {
 	// Create QEMU instance
 	instance, err := m.qemu.CreateWithID(name, qemuConfig)
 	if err != nil {
-		return fmt.Errorf("failed to create QEMU instance: %w", err)
+		return m.startHost(name, config, fmt.Errorf("failed to create QEMU instance: %w", err))
 	}
 
 	// Start the instance
-	return instance.Start()
+	if err := instance.Start(); err != nil {
+		return m.startHost(name, config, err)
+	}
+	return nil
 }
 
 func (m *VMManager) StopVM(name string) error {
 	inst, ok := m.qemu.Get(name)
-	if !ok {
-		return fmt.Errorf("VM %s not found", name)
+	if ok && inst.IsRunning() {
+		return inst.Stop()
 	}
-	return inst.Stop()
+	if config, exists := m.Get(name); exists && m.host != nil {
+		index := config.HostIndex
+		if index == "" {
+			index = "0"
+		}
+		return m.host.Stop(index)
+	}
+	return fmt.Errorf("VM %s not running", name)
 }
 
 func (m *VMManager) ResetVM(name string) error {
 	inst, ok := m.qemu.Get(name)
-	if !ok {
-		return fmt.Errorf("VM %s not found", name)
+	if ok && inst.IsRunning() {
+		return inst.Reset()
 	}
-	return inst.Reset()
+	if config, exists := m.Get(name); exists && m.host != nil {
+		index := config.HostIndex
+		if index == "" {
+			index = "0"
+		}
+		return m.host.Restart(index)
+	}
+	return fmt.Errorf("VM %s not running", name)
 }
 
 func (m *VMManager) ScreenshotVM(name, path string) error {
@@ -292,10 +321,63 @@ func (m *VMManager) ScreenshotVM(name, path string) error {
 
 func (m *VMManager) Status(name string) string {
 	inst, ok := m.qemu.Get(name)
-	if !ok {
-		return "stopped"
+	if ok {
+		status := inst.GetStatus()
+		if status == "running" || status == "starting" {
+			return status
+		}
 	}
-	return inst.GetStatus()
+	if config, exists := m.Get(name); exists && m.host != nil {
+		index := config.HostIndex
+		if index == "" {
+			index = "0"
+		}
+		info, err := m.host.Info(index)
+		if err != nil {
+			return "stopped"
+		}
+		if info.IsAndroidStarted || info.IsProcessStarted {
+			return "running"
+		}
+	}
+	return "stopped"
+}
+
+func (m *VMManager) startHost(name string, config *VMConfig, qemuErr error) error {
+	if m.host == nil {
+		return fmt.Errorf("QEMU start failed and host engine is not configured: %w", qemuErr)
+	}
+
+	index, err := m.host.EnsureIndex(config.HostIndex)
+	if err != nil {
+		return fmt.Errorf("QEMU start failed (%v); host engine device unavailable: %w", qemuErr, err)
+	}
+	if index != config.HostIndex {
+		config.HostIndex = index
+		config.Backend = "host"
+		_ = config.Save(filepath.Join(m.dataDir, name+".json"))
+	}
+
+	hostConfig := hostcli.Config{
+		Name:        config.Name,
+		CPUs:        config.CPUs,
+		RAM:         config.RAM,
+		Resolution:  config.Resolution,
+		DPI:         config.DPI,
+		Performance: config.Performance,
+		Renderer:    config.Renderer,
+		MaxFPS:      config.MaxFPS,
+		Root:        config.Root,
+		PhoneBrand:  config.PhoneBrand,
+		PhoneModel:  config.PhoneModel,
+	}
+	if err := m.host.ApplyConfig(index, hostConfig); err != nil {
+		return fmt.Errorf("QEMU start failed (%v); host engine configuration failed: %w", qemuErr, err)
+	}
+	if err := m.host.Start(index); err != nil {
+		return fmt.Errorf("QEMU start failed (%v); host engine start failed: %w", qemuErr, err)
+	}
+	return nil
 }
 
 func (m *VMManager) allocatePorts() (vncDisplay int, vncPort int, adbPort int) {
@@ -319,6 +401,13 @@ func (m *VMManager) allocatePorts() (vncDisplay int, vncPort int, adbPort int) {
 		adbPort += 2
 	}
 	return vncPort - 5700, vncPort, adbPort
+}
+
+func defaultHostIndex(existing int) string {
+	if existing <= 0 {
+		return "0"
+	}
+	return strconv.Itoa(existing)
 }
 
 var vmNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._ -]{0,63}$`)

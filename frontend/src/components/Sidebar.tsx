@@ -11,8 +11,8 @@ interface SidebarProps {
 }
 
 const NAV_ITEMS = [
-	{ id: 'display', labelKey: 'display', icon: '▣' },
-	{ id: 'vms', labelKey: 'multiInstance', icon: '▦' },
+	{ id: 'vms', labelKey: 'devices', icon: '▣' },
+	{ id: 'display', labelKey: 'display', icon: '▤' },
 	{ id: 'files', labelKey: 'fileManager', icon: '□' },
 	{ id: 'shell', labelKey: 'shell', icon: '>' },
 	{ id: 'logs', labelKey: 'logs', icon: '≡' },
@@ -20,61 +20,38 @@ const NAV_ITEMS = [
 	{ id: 'settings', labelKey: 'settings', icon: '⚙' },
 ]
 
-export function Sidebar({ open, activeView, onViewChange, vms, selectedVM, onSelectVM }: SidebarProps) {
+export function Sidebar({
+	open,
+	activeView,
+	onViewChange,
+	vms: _vms,
+	selectedVM: _selectedVM,
+	onSelectVM: _onSelectVM,
+}: SidebarProps) {
 	const { t } = useI18n()
 
 	if (!open) return null
 
 	return (
-		<aside className="w-56 bg-gray-800 border-r border-gray-700 flex flex-col">
-			<div className="h-14 flex items-center px-4 border-b border-gray-700">
-				<span className="font-bold text-lg">AndroidSim233</span>
-			</div>
-
-			<nav className="flex-1 p-2 space-y-1">
+		<aside className="flex w-[110px] flex-col border-r border-black/40 bg-[#202020]">
+			<nav className="flex-1 space-y-5 px-3 pt-12">
 				{NAV_ITEMS.map((item) => (
 					<button
 						key={item.id}
 						onClick={() => onViewChange(item.id)}
-						className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+						className={`flex h-[78px] w-full flex-col items-center justify-center gap-2 rounded-md text-base transition-colors ${
 							activeView === item.id
-								? 'bg-blue-600 text-white'
-								: 'text-gray-400 hover:bg-gray-700 hover:text-white'
+								? 'bg-white/15 text-white'
+								: 'text-gray-300 hover:bg-white/10 hover:text-white'
 						}`}
 					>
-						<span>{item.icon}</span>
+						<span className="text-3xl leading-none">{item.icon}</span>
 						<span>{t(item.labelKey)}</span>
 					</button>
 				))}
 			</nav>
 
-			<div className="p-2 border-t border-gray-700">
-				<div className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-					{t('devices')}
-				</div>
-				<div className="space-y-1 max-h-48 overflow-auto">
-					{vms.length === 0 ? (
-						<div className="px-2 py-2 text-xs text-gray-500">{t('noDevices')}</div>
-					) : (
-						vms.map((vm) => (
-							<button
-								key={vm.name}
-								onClick={() => onSelectVM(vm.name)}
-								className={`w-full rounded px-2 py-2 text-left text-sm ${
-									selectedVM?.name === vm.name
-										? 'bg-gray-700 text-white'
-										: 'text-gray-400 hover:bg-gray-700'
-								}`}
-							>
-								<div className="truncate">{vm.name}</div>
-								<div className="text-xs text-gray-500">{vm.status ?? 'stopped'}</div>
-							</button>
-						))
-					)}
-				</div>
-			</div>
-
-			<div className="p-4 border-t border-gray-700 text-xs text-gray-500">
+			<div className="border-t border-white/10 p-4 text-center text-xs text-gray-500">
 				v0.1.0
 			</div>
 		</aside>

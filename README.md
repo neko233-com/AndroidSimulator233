@@ -1,6 +1,6 @@
 # AndroidSimulator233
 
-Open-source Android Simulator — a free alternative to MuMu Simulator, supporting Windows and macOS.
+Open-source Android Simulator for desktop Android device management, supporting Windows and macOS.
 
 ## Features
 
